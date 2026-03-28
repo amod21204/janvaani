@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import express from 'express';
 import {existsSync} from 'fs';
+import type {AddressInfo} from 'net';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {createServer as createViteServer} from 'vite';
@@ -20,6 +21,28 @@ const hasBuiltClient = existsSync(path.join(distPath, 'index.html'));
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+const MAX_PORT_ATTEMPTS = 10;
+
+function listenOnAvailablePort(app: express.Express, preferredPort: number, host: string, attemptsLeft = MAX_PORT_ATTEMPTS): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(preferredPort, host);
+
+    server.once('listening', () => {
+      const address = server.address() as AddressInfo | null;
+      resolve(address?.port ?? preferredPort);
+    });
+
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE' && attemptsLeft > 0) {
+        console.warn(`Port ${preferredPort} is in use. Trying ${preferredPort + 1}...`);
+        resolve(listenOnAvailablePort(app, preferredPort + 1, host, attemptsLeft - 1));
+        return;
+      }
+
+      reject(error);
+    });
+  });
+}
 
 async function startServer() {
   const app = express();
@@ -121,9 +144,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, HOST, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  const runningPort = await listenOnAvailablePort(app, PORT, HOST);
+  console.log(`Server running on http://localhost:${runningPort}`);
 }
 
 startServer().catch((error) => {
