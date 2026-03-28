@@ -24,6 +24,7 @@ import {HELPLINE_ENTRIES} from './data/helplines.ts';
 import {cn} from './lib/utils.ts';
 import VoiceToText from './components/VoiceToText.tsx';
 import HelpAndGuidance from './components/HelpAndGuidance.jsx';
+import Chatbot from './components/Chatbot.jsx';
 import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
 import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
 import {generateLegalDocument} from './services/gemini.ts';
@@ -966,6 +967,7 @@ export default function App() {
           </div>
         </HelpAndGuidance>
       </main>
+      <Chatbot onStartComplaint={handleStartComplaint} />
     </div>
   );
 }
