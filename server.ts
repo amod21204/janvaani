@@ -53,6 +53,16 @@ async function startServer() {
     res.json({status: 'ok'});
   });
 
+  app.get('/api/public-config', (_req, res) => {
+    const whatsappNumber = typeof process.env.WHATSAPP_PHONE_NUMBER === 'string' ? process.env.WHATSAPP_PHONE_NUMBER : '';
+    const welcomeMessage = typeof process.env.WELCOME_MESSAGE === 'string' ? process.env.WELCOME_MESSAGE : 'Hi! I need help from JanVaani';
+
+    res.json({
+      whatsappNumber,
+      welcomeMessage,
+    });
+  });
+
   app.post('/translate', translateComplaintController);
   app.use('/get-guidance', guidanceRouter);
 

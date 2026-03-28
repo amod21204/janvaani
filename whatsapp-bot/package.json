@@ -1,0 +1,16 @@
+{
+  "name": "janvaani-whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp chatbot for JanVaani using Twilio WhatsApp sandbox and Node.js",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "twilio": "^5.6.0"
+  }
+}
