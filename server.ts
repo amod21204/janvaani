@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import express from 'express';
 import {existsSync} from 'fs';
+import type {AddressInfo} from 'net';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {createServer as createViteServer} from 'vite';
@@ -20,6 +21,35 @@ const hasBuiltClient = existsSync(path.join(distPath, 'index.html'));
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+const MAX_PORT_RETRIES = 10;
+
+function listenWithFallback(app: express.Express, host: string, startPort: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    let currentPort = startPort;
+
+    const tryListen = () => {
+      const server = app.listen(currentPort, host, () => {
+        const address = server.address() as AddressInfo | null;
+        resolve(address?.port ?? currentPort);
+      });
+
+      server.once('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE' && attempts < MAX_PORT_RETRIES) {
+          attempts += 1;
+          currentPort += 1;
+          console.warn(`Port ${currentPort - 1} is busy, retrying on ${currentPort}...`);
+          tryListen();
+          return;
+        }
+
+        reject(error);
+      });
+    };
+
+    tryListen();
+  });
+}
 
 async function startServer() {
   const app = express();
@@ -121,9 +151,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, HOST, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  const activePort = await listenWithFallback(app, HOST, PORT);
+  console.log(`Server running on http://localhost:${activePort}`);
 }
 
 startServer().catch((error) => {
