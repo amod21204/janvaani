@@ -7,14 +7,12 @@ import {
   Download,
   ExternalLink,
   FileText,
-  FolderKanban,
   Info,
   Languages,
   Loader2,
   LogOut,
   Phone,
   Scale,
-  Search,
   Send,
   ShieldCheck,
   Trash2,
@@ -22,13 +20,14 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-import {FORM_CATEGORIES, GOVERNMENT_FORM_REFERENCES, type FormCategory} from './data/forms.ts';
 import {HELPLINE_ENTRIES} from './data/helplines.ts';
 import {cn} from './lib/utils.ts';
+import VoiceToText from './components/VoiceToText.tsx';
 import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
 import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
 import {generateLegalDocument} from './services/gemini.ts';
-import type {FormSuggestion, GeneratedDocument} from './types/legal.ts';
+import {getCivicGuidance, translateGuidanceToHindi} from './services/guidance.ts';
+import type {CivicGuidanceResult, FormSuggestion, GeneratedDocument} from './types/legal.ts';
 
 interface Message {
   id: string;
@@ -43,8 +42,6 @@ const STORAGE_KEYS = {
 } as const;
 
 const WELCOME = 'Namaste! I am JAN-VAANI, your AI Civic Legal Copilot.';
-const ALL_CATEGORIES = 'All Categories';
-
 const emptyProfile = {
   fullName: '',
   email: '',
@@ -76,7 +73,18 @@ Address: ${user.address}
 Phone number: ${user.phoneNumber}`;
 }
 
+function buildGuidanceText(result: CivicGuidanceResult) {
+  return [
+    `Original Query:\n${result.query}`,
+    `Documents Required:\n${result.documents_required.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+    `Steps to Follow:\n${result.steps.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+    `Where to Go:\n${result.where_to_go}`,
+    `Tips / Notes:\n${result.tips.map((item, index) => `${index + 1}. ${item}`).join('\n')}`,
+  ].join('\n\n');
+}
+
 export default function App() {
+  const [workspaceMode, setWorkspaceMode] = useState<'drafting' | 'guidance'>('drafting');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loginForm, setLoginForm] = useState({...emptyProfile});
@@ -89,8 +97,13 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<FormCategory | typeof ALL_CATEGORIES>(ALL_CATEGORIES);
+  const [complaintPreview, setComplaintPreview] = useState<GeneratedDocument | null>(null);
+  const [guidanceQuery, setGuidanceQuery] = useState('');
+  const [guidanceResult, setGuidanceResult] = useState<CivicGuidanceResult | null>(null);
+  const [guidanceHindi, setGuidanceHindi] = useState('');
+  const [guidanceLoading, setGuidanceLoading] = useState(false);
+  const [guidanceError, setGuidanceError] = useState<string | null>(null);
+  const [guidanceTranslating, setGuidanceTranslating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,18 +128,13 @@ export default function App() {
     }
   }, [messages]);
 
-  const filteredForms = useMemo(() => {
-    return GOVERNMENT_FORM_REFERENCES.filter((form) => {
-      const query = searchTerm.trim().toLowerCase();
-      const matchesCategory = selectedCategory === ALL_CATEGORIES || form.category === selectedCategory;
-      const matchesSearch =
-        !query ||
-        form.subject.toLowerCase().includes(query) ||
-        form.category.toLowerCase().includes(query) ||
-        form.note?.toLowerCase().includes(query);
-      return matchesCategory && matchesSearch;
-    });
-  }, [searchTerm, selectedCategory]);
+  useEffect(() => {
+    if (!complaintPreview) {
+      return;
+    }
+
+    document.getElementById('complaintOutput')?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }, [complaintPreview]);
 
   const helplineGroups = useMemo(() => {
     return HELPLINE_ENTRIES.reduce<Record<string, typeof HELPLINE_ENTRIES>>((acc, entry) => {
@@ -196,6 +204,14 @@ export default function App() {
     setMessages(welcomeMessages(null));
     window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
     setError(null);
+    setGuidanceError(null);
+  };
+
+  const handleStartComplaint = () => {
+    setWorkspaceMode('drafting');
+    window.setTimeout(() => {
+      document.getElementById('complaintSection')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 50);
   };
 
   const handleSend = async () => {
@@ -211,6 +227,7 @@ export default function App() {
 
     try {
       const result = await generateLegalDocument(enrichPrompt(prompt, currentUser));
+      setComplaintPreview(result.document);
       setMessages((prev) => [
         ...prev,
         {
@@ -231,6 +248,23 @@ export default function App() {
   const clearChat = () => {
     setMessages(welcomeMessages(currentUser));
     setError(null);
+    setComplaintPreview(null);
+  };
+
+  const clearGuidance = () => {
+    setGuidanceQuery('');
+    setGuidanceResult(null);
+    setGuidanceHindi('');
+    setGuidanceError(null);
+  };
+
+  const handleWorkspaceReset = () => {
+    if (workspaceMode === 'guidance') {
+      clearGuidance();
+      return;
+    }
+
+    clearChat();
   };
 
   const copyToClipboard = async (text: string, id: string) => {
@@ -266,6 +300,79 @@ export default function App() {
     pdf.setFontSize(12);
     pdf.text(pdf.splitTextToSize(doc.content.replace(/#/g, ''), 170), 20, 40);
     pdf.save(`${doc.type}_${safeTitle}.pdf`);
+  };
+
+  const downloadGuidance = async () => {
+    if (!guidanceResult) {
+      return;
+    }
+
+    const content = buildGuidanceText(guidanceResult) + (guidanceHindi ? `\n\nHindi Translation:\n${guidanceHindi}` : '');
+    const isNonEnglish = /[^\x00-\x7F]/.test(content);
+
+    if (isNonEnglish) {
+      const file = new Blob([content], {type: 'text/plain;charset=utf-8'});
+      const href = URL.createObjectURL(file);
+      const element = document.createElement('a');
+      element.href = href;
+      element.download = 'janvaani_civic_guidance.txt';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(href);
+      return;
+    }
+
+    const {jsPDF} = await import('jspdf');
+    const pdf = new jsPDF();
+    pdf.setFontSize(16);
+    pdf.text('JAN-VAANI Civic Guidance', 20, 20);
+    pdf.setFontSize(12);
+    pdf.text(pdf.splitTextToSize(content, 170), 20, 35);
+    pdf.save('janvaani_civic_guidance.pdf');
+  };
+
+  const handleGuidanceSubmit = async () => {
+    const query = guidanceQuery.trim();
+    if (!query || guidanceLoading) {
+      return;
+    }
+
+    setGuidanceLoading(true);
+    setGuidanceError(null);
+    setGuidanceHindi('');
+
+    try {
+      const enrichedQuery = currentUser
+        ? `${query}\n\nCitizen details:\nName: ${currentUser.fullName}\nAddress: ${currentUser.address}\nOccupation: ${currentUser.occupation}`
+        : query;
+      const result = await getCivicGuidance(enrichedQuery);
+      setGuidanceResult({...result, query});
+    } catch (caughtError: unknown) {
+      setGuidanceError(caughtError instanceof Error ? caughtError.message : 'Unable to fetch guidance right now.');
+    } finally {
+      setGuidanceLoading(false);
+    }
+  };
+
+  const handleGuidanceTranslation = async () => {
+    if (!guidanceResult || guidanceTranslating) {
+      return;
+    }
+
+    setGuidanceTranslating(true);
+    setGuidanceError(null);
+
+    try {
+      const translation = await translateGuidanceToHindi(
+        `Translate the following civic guidance into simple Hindi while preserving the headings, numbering, and official tone.\n\n${buildGuidanceText(guidanceResult)}`,
+      );
+      setGuidanceHindi(translation.formatted || translation.translated);
+    } catch (caughtError: unknown) {
+      setGuidanceError(caughtError instanceof Error ? caughtError.message : 'Unable to translate guidance right now.');
+    } finally {
+      setGuidanceTranslating(false);
+    }
   };
 
   if (!currentUser) {
@@ -443,7 +550,7 @@ export default function App() {
               </div>
             )}
             <div className="mt-6 rounded-2xl border border-[#eadfce] bg-[#faf5ef] px-4 py-3 text-sm text-[#725f50]">
-              This version stores accounts locally in your browser for demo use.
+              Sign in to access drafting, civic guidance, form references, helplines, and voice-assisted support.
             </div>
           </section>
         </div>
@@ -476,10 +583,10 @@ export default function App() {
             </div>
             <div className="hidden items-center gap-2 rounded-full border border-[#d8cfc4] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#6a584b] sm:flex">
               <Languages className="h-3.5 w-3.5" />
-              <span>Profile + Forms + Helplines</span>
+              <span>{workspaceMode === 'guidance' ? 'Guidance + Translation + PDF' : 'Profile + Forms + Helplines'}</span>
             </div>
-            <button onClick={clearChat} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#735c4d]" type="button">
-              <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Reset</span>
+            <button onClick={handleWorkspaceReset} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#735c4d]" type="button">
+              <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" />{workspaceMode === 'guidance' ? 'Clear Guidance' : 'Reset'}</span>
             </button>
             <button onClick={handleLogout} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#735c4d]" type="button">
               <span className="flex items-center gap-2"><LogOut className="h-4 w-4" />Logout</span>
@@ -514,40 +621,70 @@ export default function App() {
           <section className="overflow-hidden rounded-[28px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
             <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><FolderKanban className="h-5 w-5" /></div>
+                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><FileText className="h-5 w-5" /></div>
                 <div>
-                  <h2 className="text-lg font-bold text-[#281e17]">Government Forms Reference</h2>
-                  <p className="text-sm text-[#7a6454]">Search official forms and attached samples.</p>
+                  <h2 className="text-lg font-bold text-[#281e17]">Complaint Support</h2>
+                  <p className="text-sm text-[#7a6454]">Start a complaint or speak your issue directly.</p>
                 </div>
               </div>
             </div>
-            <div className="space-y-4 p-5">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8574]" />
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by subject or type" className="w-full rounded-2xl border border-[#dacfc4] bg-[#fcfaf7] py-3 pl-10 pr-4 text-sm outline-none" />
+            <div className="p-5">
+              <button id="startComplaintBtn" onClick={handleStartComplaint} disabled={isLoading} className="primary-btn w-full disabled:cursor-not-allowed disabled:opacity-60" type="button">
+                Start Complaint
+              </button>
+              <div id="complaintSection" className="complaint-section">
+                <h2 className="text-lg font-bold text-[#281e17]">Write Your Complaint</h2>
+                <div className="relative mt-4">
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder="Type your complaint..."
+                    className="min-h-[120px] w-full rounded-[20px] border border-[#dacfc4] bg-[#fcfaf7] px-5 py-4 pr-16 text-sm shadow-sm outline-none"
+                    rows={4}
+                  />
+                  <button onClick={() => void handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-3 right-3 rounded-2xl bg-[#b64d20] p-3 text-white disabled:opacity-50" type="button">
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+                {isLoading && (
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#8a7465]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating complaint...
+                  </div>
+                )}
               </div>
-              <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value as FormCategory | typeof ALL_CATEGORIES)} className="w-full rounded-2xl border border-[#dacfc4] bg-[#fcfaf7] px-4 py-3 text-sm font-medium text-[#47362b] outline-none">
-                <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
-                {FORM_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
-              </select>
-            </div>
-            <div className="max-h-[34vh] overflow-y-auto border-t border-[#efe6dc] px-5 pb-5">
-              <div className="space-y-3 pt-5">
-                {filteredForms.map((form) => (
-                  <article key={`${form.category}-${form.subject}`} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a0795f]">{form.category}</p>
-                        <h3 className="mt-1 text-sm font-bold leading-snug text-[#2d221b]">{form.subject}</h3>
-                      </div>
-                      <span className="rounded-full bg-[#f2e2d2] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b4b24]">{form.format}</span>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-sm text-[#6f5a4a]">
-                      <span>{form.size}</span>
-                      {form.href ? <a href={form.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-[#b14d21]">Download<ExternalLink className="h-4 w-4" /></a> : <span className="font-medium text-[#9f8d80]">Reference only</span>}
-                    </div>
-                  </article>
-                ))}
+              <div id="complaintOutput" className={cn('complaint-box', !complaintPreview && 'hidden')}>
+                <h3 className="text-lg font-bold text-[#281e17]">Generated Complaint</h3>
+                <p id="complaintText">{complaintPreview?.content ?? ''}</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button id="editBtn" onClick={handleStartComplaint} className="rounded-lg border border-[#d8cfc4] bg-white px-4 py-2 text-sm font-semibold text-[#4b3b31]" type="button">
+                    Edit
+                  </button>
+                  <button
+                    id="downloadBtn"
+                    onClick={() => void (complaintPreview ? downloadDocument(complaintPreview) : Promise.resolve())}
+                    className="rounded-lg border border-[#d8cfc4] bg-white px-4 py-2 text-sm font-semibold text-[#4b3b31]"
+                    type="button"
+                  >
+                    Download PDF
+                  </button>
+                </div>
+              </div>
+              <div className="voice-card mt-5">
+                <h2 className="mb-3 text-lg font-bold text-[#281e17]">Speak Your Complaint</h2>
+                <VoiceToText
+                  compact
+                  label="Voice Input Complaint"
+                  value={input}
+                  onTranscriptChange={setInput}
+                  placeholder="Speak your complaint in English, Hindi, or Marathi..."
+                />
               </div>
             </div>
           </section>
@@ -593,15 +730,39 @@ export default function App() {
           <div className="border-b border-[#ece2d6] bg-[radial-gradient(circle_at_top_left,#fff2e8_0%,#fffaf5_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#af5427]">Drafting Studio</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#221912]">Write with form-aware legal guidance</h2>
-                <p className="mt-2 text-sm text-[#756251]">Use your saved details, forms, and helplines together while drafting.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#af5427]">{workspaceMode === 'guidance' ? 'Civic Guidance Assistant' : 'Drafting Studio'}</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#221912]">
+                  {workspaceMode === 'guidance' ? 'Get guidance for your issue' : 'Write with form-aware legal guidance'}
+                </h2>
+                <p className="mt-2 text-sm text-[#756251]">
+                  {workspaceMode === 'guidance'
+                    ? 'Ask how to get a certificate, complete a civic process, or approach the right office. JanVaani will organize the answer into documents, steps, office, and tips.'
+                    : 'Use your saved details, forms, and helplines together while drafting.'}
+                </p>
+              </div>
+              <div className="flex rounded-2xl border border-[#e6d9cc] bg-white/90 p-1">
+                <button
+                  onClick={() => setWorkspaceMode('drafting')}
+                  className={cn('rounded-2xl px-4 py-2 text-sm font-semibold transition', workspaceMode === 'drafting' ? 'bg-[#b64d20] text-white' : 'text-[#785f4e]')}
+                  type="button"
+                >
+                  Drafting
+                </button>
+                <button
+                  onClick={() => setWorkspaceMode('guidance')}
+                  className={cn('rounded-2xl px-4 py-2 text-sm font-semibold transition', workspaceMode === 'guidance' ? 'bg-[#b64d20] text-white' : 'text-[#785f4e]')}
+                  type="button"
+                >
+                  Civic Guidance
+                </button>
               </div>
             </div>
           </div>
 
           <div className="flex h-[calc(100vh-13rem)] min-h-[720px] flex-col px-4 py-5 sm:px-6">
-            <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto pr-1">
+            {workspaceMode === 'drafting' ? (
+              <>
+                <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto pr-1">
               <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
                 <div className="flex items-start gap-3">
                   <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><Info className="h-5 w-5" /></div>
@@ -669,7 +830,7 @@ export default function App() {
                     {!!msg.suggestions?.length && (
                       <div className="mt-4 w-full rounded-3xl border border-[#e7dccf] bg-[#faf6f1] p-4">
                         <div className="flex items-center gap-2">
-                          <FolderKanban className="h-4 w-4 text-[#b14d21]" />
+                          <FileText className="h-4 w-4 text-[#b14d21]" />
                           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8c6952]">Suggested Reference Files</p>
                         </div>
                         <div className="mt-3 grid gap-3">
@@ -704,30 +865,111 @@ export default function App() {
               {error && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{error}</motion.div>}
             </div>
 
-            <div className="mt-5 border-t border-[#ece2d6] pt-5">
-              <div className="relative">
-                <textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  placeholder="Ask for a draft, form, or complaint using your saved profile details..."
-                  className="min-h-[72px] w-full rounded-[28px] border border-[#dacfc4] bg-[#fcfaf7] px-5 py-4 pr-16 text-sm shadow-sm outline-none"
-                  rows={1}
-                />
-                <button onClick={() => void handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-3 right-3 rounded-2xl bg-[#b64d20] p-3 text-white disabled:opacity-50" type="button">
-                  <Send className="h-5 w-5" />
-                </button>
+                <div className="mt-5 border-t border-[#ece2d6] pt-5">
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#94806f]">
+                    <span className="flex items-center gap-1"><Info className="h-3 w-3" /> AI Generated Drafts</span>
+                    <span className="flex items-center gap-1"><Scale className="h-3 w-3" /> Verify before official submission</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-1">
+                <div className="space-y-6">
+                  <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><Info className="h-5 w-5" /></div>
+                      <div>
+                        <h3 className="text-base font-bold text-[#2b211a]">Guidance Request</h3>
+                        <p className="mt-1 text-sm text-[#796556]">Describe the service, certificate, or civic problem you need help with. JAN-VAANI will organize the response for you.</p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <textarea
+                        value={guidanceQuery}
+                        onChange={(event) => setGuidanceQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' && !event.shiftKey) {
+                            event.preventDefault();
+                            void handleGuidanceSubmit();
+                          }
+                        }}
+                        placeholder="Example: How do I get a bonafide certificate?"
+                        className="min-h-[124px] w-full rounded-[28px] border border-[#dacfc4] bg-white px-5 py-4 text-sm shadow-sm outline-none"
+                      />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button onClick={() => void handleGuidanceSubmit()} disabled={!guidanceQuery.trim() || guidanceLoading} className="rounded-2xl bg-[#b64d20] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#984119] disabled:opacity-50" type="button">
+                        {guidanceLoading ? 'Getting Guidance...' : 'Get Guidance'}
+                      </button>
+                      <button onClick={() => void handleGuidanceTranslation()} disabled={!guidanceResult || guidanceTranslating} className="rounded-2xl border border-[#d8cfc4] bg-white px-5 py-3 text-sm font-semibold text-[#735c4d] disabled:opacity-50" type="button">
+                        {guidanceTranslating ? 'Translating...' : 'Translate to Hindi'}
+                      </button>
+                      <button onClick={() => void downloadGuidance()} disabled={!guidanceResult} className="rounded-2xl border border-[#d8cfc4] bg-white px-5 py-3 text-sm font-semibold text-[#735c4d] disabled:opacity-50" type="button">
+                        Download
+                      </button>
+                    </div>
+                    <div className="mt-3">
+                      <VoiceToText compact label="Voice Input" value={guidanceQuery} onTranscriptChange={setGuidanceQuery} placeholder="Speak your issue in English, Hindi, or Marathi..." />
+                    </div>
+                  </div>
+
+                  {guidanceLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#8a7465]"><Loader2 className="h-4 w-4 animate-spin" />JAN-VAANI is preparing your civic guidance...</motion.div>}
+                  {guidanceError && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{guidanceError}</motion.div>}
+
+                  {guidanceResult && (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-sm lg:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a0795f]">Original Query</p>
+                        <p className="mt-3 text-sm leading-relaxed text-[#2d241d]">{guidanceResult.query}</p>
+                      </div>
+                      <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a0795f]">Documents Required</p>
+                        <ul className="mt-4 space-y-3">
+                          {guidanceResult.documents_required.map((item, index) => (
+                            <li key={`document-${index}`} className="flex gap-3 text-sm leading-relaxed text-[#2d241d]">
+                              <span className="mt-0.5 text-[#b14d21]">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a0795f]">Steps to Follow</p>
+                        <ol className="mt-4 space-y-3">
+                          {guidanceResult.steps.map((item, index) => (
+                            <li key={`step-${index}`} className="flex gap-3 text-sm leading-relaxed text-[#2d241d]">
+                              <span className="mt-0.5 font-semibold text-[#b14d21]">{index + 1}.</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                      <div className="rounded-3xl border border-[#f0cdb6] bg-[#fff3ea] p-5 shadow-sm lg:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9c4f27]">Where to Go</p>
+                        <p className="mt-3 text-sm font-medium leading-relaxed text-[#2d241d]">{guidanceResult.where_to_go}</p>
+                      </div>
+                      <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-sm lg:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a0795f]">Tips / Notes</p>
+                        <ul className="mt-4 space-y-3">
+                          {guidanceResult.tips.map((item, index) => (
+                            <li key={`tip-${index}`} className="flex gap-3 text-sm leading-relaxed text-[#2d241d]">
+                              <span className="mt-0.5 text-[#b14d21]">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {guidanceHindi && (
+                        <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-sm lg:col-span-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a0795f]">Hindi Translation</p>
+                          <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[#2d241d]">{guidanceHindi}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#94806f]">
-                <span className="flex items-center gap-1"><Info className="h-3 w-3" /> AI Generated Drafts</span>
-                <span className="flex items-center gap-1"><Scale className="h-3 w-3" /> Verify before official submission</span>
-              </div>
-            </div>
+            )}
           </div>
         </section>
       </main>

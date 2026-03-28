@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JanVaani Civic Guidance Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <main class="mx-auto max-w-6xl px-4 py-10">
+      <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 px-6 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">JanVaani</p>
+          <h1 class="mt-2 text-3xl font-bold">Get Guidance for Your Issue</h1>
+          <p class="mt-2 text-sm text-slate-600">
+            Describe your problem in simple language. JanVaani will return the required documents, steps, office details, and practical notes.
+          </p>
+        </div>
+
+        <div class="grid gap-6 px-6 py-6 lg:grid-cols-[1.05fr,0.95fr]">
+          <div class="space-y-5">
+            <label class="block">
+              <span class="mb-2 block text-sm font-semibold text-slate-700">Describe your problem</span>
+              <textarea
+                id="queryInput"
+                rows="10"
+                class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+                placeholder="Example: How do I get a bonafide certificate?"
+              ></textarea>
+            </label>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <button
+                id="guidanceButton"
+                class="rounded-2xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Get Guidance
+              </button>
+              <button
+                id="translateHindiButton"
+                class="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+              >
+                Translate to Hindi
+              </button>
+              <button
+                id="downloadButton"
+                class="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+              >
+                Download as PDF
+              </button>
+            </div>
+
+            <div id="loading" class="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <span class="h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent"></span>
+              Fetching civic guidance...
+            </div>
+
+            <div id="errorBox" class="hidden rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+
+            <div id="translatedHindiCard" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Hindi Translation</h2>
+              <div id="translatedHindiOutput" class="mt-3 whitespace-pre-wrap rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed"></div>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Original Query</h2>
+              <div id="originalOutput" class="mt-3 min-h-[80px] whitespace-pre-wrap rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed"></div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Documents Required</h2>
+              <ul id="documentsOutput" class="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm leading-relaxed text-slate-700"></ul>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Steps to Follow</h2>
+              <ol id="stepsOutput" class="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm leading-relaxed text-slate-700"></ol>
+            </div>
+
+            <div class="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-orange-700">Where to Go</h2>
+              <div id="whereToGoOutput" class="mt-3 whitespace-pre-wrap rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-medium leading-relaxed text-slate-800"></div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Tips / Notes</h2>
+              <ul id="tipsOutput" class="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm leading-relaxed text-slate-700"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/guidance.js"></script>
+  </body>
+</html>

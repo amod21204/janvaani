@@ -36,3 +36,29 @@
     @apply my-4 border-l-4 border-[#d79b79] bg-[#fbf3ec] px-4 py-2 text-[#6e5748];
   }
 }
+
+@layer components {
+  .primary-btn {
+    @apply cursor-pointer rounded-lg border-0 bg-blue-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-blue-800;
+  }
+
+  .voice-card {
+    @apply rounded-xl bg-gray-50 p-5 shadow-[0_4px_10px_rgba(0,0,0,0.1)];
+  }
+
+  .complaint-section {
+    @apply mt-7 rounded-xl bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)];
+  }
+
+  .complaint-box {
+    @apply mt-5 rounded-xl bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)];
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  #complaintText {
+    @apply mt-2 whitespace-pre-wrap leading-7 text-[#333333];
+  }
+}
