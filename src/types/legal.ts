@@ -29,3 +29,28 @@ export interface CivicGuidanceResult {
   where_to_go: string;
   tips: string[];
 }
+
+export type ComplaintStatus = 'pending' | 'follow-up required' | 'resolved';
+
+export interface ComplaintRecord {
+  id: number;
+  text_original: string;
+  text_improved: string;
+  category: string;
+  department: string;
+  status: ComplaintStatus;
+  evidence_text: string;
+  created_at: string;
+}
+
+export interface ComplaintDashboard {
+  totalComplaints: number;
+  pendingComplaints: number;
+  resolvedComplaints: number;
+  followUpRequiredComplaints: number;
+  categoryBreakdown: Array<{
+    category: string;
+    total: number;
+  }>;
+  recentComplaints: ComplaintRecord[];
+}

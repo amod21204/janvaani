@@ -7,11 +7,13 @@ import {fileURLToPath} from 'url';
 import {createServer as createViteServer} from 'vite';
 
 import {guidanceRouter} from './src/routes/guidanceRoutes.ts';
+import {complaintRouter} from './src/routes/complaintRoutes.ts';
 import {translateComplaintController} from './src/controllers/translateController.ts';
-import {createOtpChallenge, getUserFromSession, registerUser, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
+import {createOtpChallenge, getUserFromSession, registerUser, requestPasswordReset, resetPasswordWithOtp, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
 import {getFormSuggestions} from './src/server/form-suggestions.ts';
 import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.ts';
-import {sendOtpEmail} from './src/server/otp-mailer.ts';
+import {sendOtpEmail, sendOtpSms} from './src/server/otp-mailer.ts';
+import {updateFollowUpStatuses} from './src/services/complaintService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +64,7 @@ async function startServer() {
 
   app.post('/translate', translateComplaintController);
   app.use('/get-guidance', guidanceRouter);
+  app.use('/api/complaints', complaintRouter);
 
   app.post('/api/auth/signup', async (req, res) => {
     try {
@@ -79,10 +82,13 @@ async function startServer() {
       const password = typeof req.body?.password === 'string' ? req.body.password : '';
       const user = await validateLogin(email, password);
       const challenge = await createOtpChallenge(email);
-      const delivery = await sendOtpEmail(user.email, challenge.otp);
+      const delivery = await sendOtpSms(challenge.phoneNumber, challenge.otp, 'login');
+      if (!delivery.delivered) {
+        await sendOtpEmail(user.email, challenge.otp);
+      }
       res.status(200).json({
         challengeId: challenge.challengeId,
-        message: delivery.delivered ? 'OTP sent to your email address.' : 'OTP generated in demo mode.',
+        message: delivery.delivered ? 'OTP sent to your phone number.' : 'OTP generated in demo mode.',
         demoOtp: 'demoOtp' in delivery ? delivery.demoOtp : undefined,
       });
     } catch (error) {
@@ -99,6 +105,36 @@ async function startServer() {
       res.status(200).json(session);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to verify OTP.';
+      res.status(400).json({error: message});
+    }
+  });
+
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const phoneNumber = typeof req.body?.phoneNumber === 'string' ? req.body.phoneNumber : '';
+      const challenge = await requestPasswordReset(phoneNumber);
+      const delivery = await sendOtpSms(challenge.phoneNumber, challenge.otp, 'reset-password');
+      res.status(200).json({
+        challengeId: challenge.challengeId,
+        message: delivery.delivered ? 'Password reset OTP sent to your phone number.' : 'OTP generated in demo mode.',
+        demoOtp: 'demoOtp' in delivery ? delivery.demoOtp : undefined,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start password reset.';
+      res.status(400).json({error: message});
+    }
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const phoneNumber = typeof req.body?.phoneNumber === 'string' ? req.body.phoneNumber : '';
+      const challengeId = typeof req.body?.challengeId === 'string' ? req.body.challengeId : '';
+      const otp = typeof req.body?.otp === 'string' ? req.body.otp : '';
+      const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+      await resetPasswordWithOtp(phoneNumber, challengeId, otp, newPassword);
+      res.status(200).json({success: true});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to reset password.';
       res.status(400).json({error: message});
     }
   });
@@ -152,6 +188,14 @@ async function startServer() {
   }
 
   const runningPort = await listenOnAvailablePort(app, PORT, HOST);
+  const runFollowUpSweep = () => {
+    void updateFollowUpStatuses().catch((error) => {
+      console.error('Failed to update complaint follow-up statuses', error);
+    });
+  };
+
+  runFollowUpSweep();
+  setInterval(runFollowUpSweep, 60 * 60 * 1000);
   console.log(`Server running on http://localhost:${runningPort}`);
 }
 

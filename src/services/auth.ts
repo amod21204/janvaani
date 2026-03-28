@@ -117,6 +117,38 @@ export async function verifyOtp(challengeId: string, otp: string): Promise<Verif
   };
 }
 
+export async function requestPasswordReset(phoneNumber: string): Promise<LoginResult> {
+  const response = await fetch('/api/auth/forgot-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phoneNumber}),
+  });
+
+  const parsed = await parseResponse(response);
+  if (!response.ok || !parsed.data || typeof parsed.data.challengeId !== 'string') {
+    throw new Error(extractErrorMessage(parsed, 'Unable to start password reset.'));
+  }
+
+  return {
+    challengeId: parsed.data.challengeId,
+    message: typeof parsed.data.message === 'string' ? parsed.data.message : 'OTP generated.',
+    demoOtp: typeof parsed.data.demoOtp === 'string' ? parsed.data.demoOtp : undefined,
+  };
+}
+
+export async function resetPassword(phoneNumber: string, challengeId: string, otp: string, newPassword: string) {
+  const response = await fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phoneNumber, challengeId, otp, newPassword}),
+  });
+
+  const parsed = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(parsed, 'Unable to reset password.'));
+  }
+}
+
 export async function restoreSession(token: string): Promise<AuthUser | null> {
   const response = await fetch('/api/auth/session', {
     headers: {

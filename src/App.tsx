@@ -2,6 +2,7 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import {AnimatePresence, motion} from 'motion/react';
 import {
   AlertCircle,
+  BarChart3,
   Check,
   Copy,
   Download,
@@ -15,22 +16,25 @@ import {
   Scale,
   Send,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UserRound,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import {HELPLINE_ENTRIES} from './data/helplines.ts';
+import ComplaintDashboard from './components/ComplaintDashboard.tsx';
 import {cn} from './lib/utils.ts';
 import VoiceToText from './components/VoiceToText.tsx';
 import HelpAndGuidance from './components/HelpAndGuidance.jsx';
 import Chatbot from './components/Chatbot.jsx';
 import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
-import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
+import {login, requestPasswordReset, resetPassword, restoreSession, signup, verifyOtp} from './services/auth.ts';
+import {fetchComplaintDashboard, fetchComplaints, improveComplaintRequest, resolveComplaint} from './services/complaints.ts';
 import {generateLegalDocument} from './services/gemini.ts';
 import {getCivicGuidance, translateGuidanceToHindi} from './services/guidance.ts';
 import {getPublicConfig} from './services/public-config.ts';
-import type {CivicGuidanceResult, FormSuggestion, GeneratedDocument} from './types/legal.ts';
+import type {CivicGuidanceResult, ComplaintDashboard as ComplaintDashboardData, ComplaintRecord, FormSuggestion, GeneratedDocument} from './types/legal.ts';
 
 interface Message {
   id: string;
@@ -53,6 +57,11 @@ const emptyProfile = {
   address: '',
   phoneNumber: '',
   password: '',
+};
+const emptyResetForm = {
+  phoneNumber: '',
+  otp: '',
+  newPassword: '',
 };
 
 function welcomeMessages(user: AuthUser | null): Message[] {
@@ -87,7 +96,7 @@ function buildGuidanceText(result: CivicGuidanceResult) {
 }
 
 export default function App() {
-  const [workspaceMode, setWorkspaceMode] = useState<'drafting' | 'guidance'>('drafting');
+  const [workspaceMode, setWorkspaceMode] = useState<'drafting' | 'guidance' | 'dashboard'>('drafting');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loginForm, setLoginForm] = useState({...emptyProfile});
@@ -95,6 +104,9 @@ export default function App() {
   const [otpState, setOtpState] = useState<LoginResult | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetForm, setResetForm] = useState({...emptyResetForm});
+  const [resetChallenge, setResetChallenge] = useState<LoginResult | null>(null);
   const [messages, setMessages] = useState<Message[]>(welcomeMessages(null));
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -107,6 +119,12 @@ export default function App() {
   const [guidanceLoading, setGuidanceLoading] = useState(false);
   const [guidanceError, setGuidanceError] = useState<string | null>(null);
   const [guidanceTranslating, setGuidanceTranslating] = useState(false);
+  const [improvingComplaint, setImprovingComplaint] = useState(false);
+  const [complaintRecord, setComplaintRecord] = useState<ComplaintRecord | null>(null);
+  const [complaintDashboard, setComplaintDashboard] = useState<ComplaintDashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [evidenceItems, setEvidenceItems] = useState<Array<{label: string; detail: string}>>([]);
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -150,6 +168,27 @@ export default function App() {
       });
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    void fetchComplaintDashboard()
+      .then((dashboard) => {
+        setComplaintDashboard(dashboard);
+        setDashboardError(null);
+      })
+      .catch((caughtError) => {
+        setDashboardError(caughtError instanceof Error ? caughtError.message : 'Unable to load dashboard.');
+      });
+
+    void fetchComplaints()
+      .then((complaints) => {
+        setComplaintRecord(complaints[0] ?? null);
+      })
+      .catch(() => undefined);
+  }, [currentUser]);
+
   const helplineGroups = useMemo(() => {
     return HELPLINE_ENTRIES.reduce<Record<string, typeof HELPLINE_ENTRIES>>((acc, entry) => {
       acc[entry.category] = [...(acc[entry.category] ?? []), entry];
@@ -164,6 +203,16 @@ export default function App() {
       setAuthError(null);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Unable to login.');
+    }
+  };
+
+  const handleForgotPasswordRequest = async () => {
+    try {
+      const result = await requestPasswordReset(resetForm.phoneNumber.trim());
+      setResetChallenge(result);
+      setAuthError(null);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to start password reset.');
     }
   };
 
@@ -183,6 +232,22 @@ export default function App() {
       setLoginForm({...emptyProfile});
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Unable to verify OTP.');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetChallenge) {
+      return;
+    }
+
+    try {
+      await resetPassword(resetForm.phoneNumber.trim(), resetChallenge.challengeId, resetForm.otp.trim(), resetForm.newPassword.trim());
+      setForgotPasswordMode(false);
+      setResetChallenge(null);
+      setResetForm({...emptyResetForm});
+      setAuthError('Password reset successfully. Please login with your new password.');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to reset password.');
     }
   };
 
@@ -255,6 +320,87 @@ export default function App() {
     setGuidanceQuery(normalizedQuery);
   };
 
+  const refreshComplaintDashboard = async () => {
+    setDashboardLoading(true);
+    try {
+      const dashboard = await fetchComplaintDashboard();
+      setComplaintDashboard(dashboard);
+      setDashboardError(null);
+    } catch (caughtError) {
+      setDashboardError(caughtError instanceof Error ? caughtError.message : 'Unable to load dashboard.');
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  const handleEvidenceFiles = async (files: FileList | null) => {
+    if (!files?.length) {
+      return;
+    }
+
+    const nextItems = Array.from(files).map((file) => {
+      if (file.type.startsWith('image/')) {
+        return {
+          label: 'Image Evidence',
+          detail: `${file.name} uploaded as visual proof of the issue.`,
+        };
+      }
+
+      if (file.type.startsWith('audio/')) {
+        return {
+          label: 'Voice Evidence',
+          detail: `${file.name} uploaded as an audio note by the citizen.`,
+        };
+      }
+
+      return {
+        label: 'File Evidence',
+        detail: `${file.name} attached by the citizen.`,
+      };
+    });
+
+    setEvidenceItems((prev) => [...prev, ...nextItems]);
+  };
+
+  const handleImproveComplaint = async () => {
+    const complaintText = input.trim();
+    if (!complaintText || improvingComplaint) {
+      return;
+    }
+
+    setImprovingComplaint(true);
+    setError(null);
+
+    try {
+      const complaint = await improveComplaintRequest(complaintText, evidenceItems);
+      setComplaintRecord(complaint);
+      setComplaintPreview({
+        title: `Improved Complaint #${complaint.id}`,
+        content: complaint.text_improved,
+        type: 'Complaint',
+        language: 'English',
+        explanation: `Routed to ${complaint.department}`,
+      });
+      await refreshComplaintDashboard();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unable to improve complaint.');
+    } finally {
+      setImprovingComplaint(false);
+    }
+  };
+
+  const handleResolveComplaint = async (id: number) => {
+    try {
+      await resolveComplaint(id);
+      if (complaintRecord?.id === id) {
+        setComplaintRecord({...complaintRecord, status: 'resolved'});
+      }
+      await refreshComplaintDashboard();
+    } catch (caughtError) {
+      setDashboardError(caughtError instanceof Error ? caughtError.message : 'Unable to resolve complaint.');
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading || !currentUser) {
       return;
@@ -290,6 +436,8 @@ export default function App() {
     setMessages(welcomeMessages(currentUser));
     setError(null);
     setComplaintPreview(null);
+    setComplaintRecord(null);
+    setEvidenceItems([]);
   };
 
   const clearGuidance = () => {
@@ -302,6 +450,11 @@ export default function App() {
   const handleWorkspaceReset = () => {
     if (workspaceMode === 'guidance') {
       clearGuidance();
+      return;
+    }
+
+    if (workspaceMode === 'dashboard') {
+      setDashboardError(null);
       return;
     }
 
@@ -490,15 +643,76 @@ export default function App() {
 
           <section className="rounded-[32px] border border-[#decfbe] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
             <div className="flex rounded-2xl bg-[#f7efe6] p-1">
-              <button onClick={() => { setAuthMode('login'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'login' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Login</button>
-              <button onClick={() => { setAuthMode('signup'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'signup' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Sign Up</button>
+              <button onClick={() => { setAuthMode('login'); setForgotPasswordMode(false); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'login' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Login</button>
+              <button onClick={() => { setAuthMode('signup'); setForgotPasswordMode(false); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'signup' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Sign Up</button>
             </div>
             <div className="mt-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b765f]">{authMode === 'login' ? 'Welcome back' : 'Create your profile'}</p>
-              <h2 className="mt-2 text-2xl font-bold text-[#261d16]">{authMode === 'login' ? 'Access your citizen workspace' : 'Register for JAN-VAANI'}</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b765f]">{forgotPasswordMode ? 'Password recovery' : authMode === 'login' ? 'Welcome back' : 'Create your profile'}</p>
+              <h2 className="mt-2 text-2xl font-bold text-[#261d16]">{forgotPasswordMode ? 'Reset your password with SMS OTP' : authMode === 'login' ? 'Access your citizen workspace' : 'Register for JAN-VAANI'}</h2>
             </div>
             {authError && <div className="mt-5 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{authError}</div>}
-            {authMode === 'login' ? (
+            {forgotPasswordMode ? (
+              <div className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Phone Number</span>
+                  <input
+                    value={resetForm.phoneNumber}
+                    onChange={(event) => setResetForm((prev) => ({...prev, phoneNumber: event.target.value}))}
+                    className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                    placeholder="Enter your registered phone number"
+                  />
+                </label>
+                <button
+                  onClick={handleForgotPasswordRequest}
+                  className="w-full rounded-2xl bg-[#b64d20] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#984119]"
+                  type="button"
+                >
+                  Send Reset OTP
+                </button>
+                {resetChallenge && (
+                  <div className="rounded-2xl border border-[#eadfce] bg-[#faf5ef] p-4">
+                    <p className="text-sm font-semibold text-[#3b2d23]">Password Reset Verification</p>
+                    <p className="mt-1 text-sm text-[#6f5a4a]">{resetChallenge.message}</p>
+                    {resetChallenge.demoOtp && (
+                      <p className="mt-2 text-sm font-bold text-[#b14d21]">Demo OTP: {resetChallenge.demoOtp}</p>
+                    )}
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-sm font-semibold text-[#46372c]">Enter OTP</span>
+                      <input
+                        value={resetForm.otp}
+                        onChange={(event) => setResetForm((prev) => ({...prev, otp: event.target.value}))}
+                        className="w-full rounded-2xl border border-[#d8cfc4] bg-white px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                        placeholder="6-digit OTP"
+                      />
+                    </label>
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-sm font-semibold text-[#46372c]">New Password</span>
+                      <input
+                        type="password"
+                        value={resetForm.newPassword}
+                        onChange={(event) => setResetForm((prev) => ({...prev, newPassword: event.target.value}))}
+                        className="w-full rounded-2xl border border-[#d8cfc4] bg-white px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                        placeholder="Enter new password"
+                      />
+                    </label>
+                    <button
+                      onClick={handleResetPassword}
+                      className="mt-3 w-full rounded-2xl border border-[#b64d20] px-4 py-3 text-sm font-semibold text-[#b64d20] transition hover:bg-[#fff0e7]"
+                      type="button"
+                    >
+                      Reset Password
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setForgotPasswordMode(false); setResetChallenge(null); setResetForm({...emptyResetForm}); setAuthError(null); }}
+                  className="w-full rounded-2xl border border-[#d8cfc4] px-4 py-3 text-sm font-semibold text-[#735c4d]"
+                  type="button"
+                >
+                  Back to Login
+                </button>
+              </div>
+            ) : authMode === 'login' ? (
               <div className="mt-6 space-y-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#46372c]">Email or Phone Number</span>
@@ -525,6 +739,13 @@ export default function App() {
                   type="button"
                 >
                   Continue to OTP
+                </button>
+                <button
+                  onClick={() => { setForgotPasswordMode(true); setResetChallenge(null); setResetForm({...emptyResetForm}); setAuthError(null); }}
+                  className="w-full rounded-2xl border border-[#d8cfc4] px-4 py-3 text-sm font-semibold text-[#735c4d]"
+                  type="button"
+                >
+                  Forgot Password?
                 </button>
                 {otpState && (
                   <div className="rounded-2xl border border-[#eadfce] bg-[#faf5ef] p-4">
@@ -704,6 +925,33 @@ export default function App() {
                     <Send className="h-5 w-5" />
                   </button>
                 </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => void handleImproveComplaint()}
+                    disabled={!input.trim() || improvingComplaint}
+                    className="rounded-2xl bg-[#2f7d4b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#24623b] disabled:opacity-50"
+                    type="button"
+                  >
+                    <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" />{improvingComplaint ? 'Improving...' : 'Improve Complaint'}</span>
+                  </button>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#d8cfc4] bg-white px-4 py-3 text-sm font-semibold text-[#4b3b31]">
+                    <FileText className="h-4 w-4" />
+                    Upload Evidence
+                    <input type="file" accept="image/*,audio/*" className="hidden" multiple onChange={(event) => void handleEvidenceFiles(event.target.files)} />
+                  </label>
+                </div>
+                {!!evidenceItems.length && (
+                  <div className="mt-4 rounded-2xl border border-[#d8e7d8] bg-[#f5fbf6] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7a57]">Evidence Builder</p>
+                    <div className="mt-3 space-y-2 text-sm text-[#34503a]">
+                      {evidenceItems.map((item, index) => (
+                        <div key={`${item.label}-${index}`} className="rounded-xl bg-white px-3 py-2">
+                          <span className="font-semibold">{item.label}:</span> {item.detail}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {isLoading && (
                   <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#8a7465]">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -711,9 +959,25 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <div id="complaintOutput" className={cn('complaint-box', !complaintPreview && 'hidden')}>
+              <div id="complaintOutput" className={cn('complaint-box', !complaintRecord && !complaintPreview && 'hidden')}>
                 <h3 className="text-lg font-bold text-[#281e17]">Generated Complaint</h3>
-                <p id="complaintText">{complaintPreview?.content ?? ''}</p>
+                {complaintRecord && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#eef9f0] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2f7d4b]">{complaintRecord.category}</span>
+                    <span className="rounded-full bg-[#edf7ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#175985]">{complaintRecord.department}</span>
+                    <span className={cn('rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]', complaintRecord.status === 'resolved' ? 'bg-[#eaf7ee] text-[#2f7d4b]' : complaintRecord.status === 'follow-up required' ? 'bg-[#fff4e8] text-[#b45309]' : 'bg-[#f4f4f5] text-[#5b5b63]')}>
+                      {complaintRecord.status}
+                    </span>
+                  </div>
+                )}
+                <p className="mt-3 text-sm font-semibold text-[#49614d]">{complaintRecord ? `This will be sent to: ${complaintRecord.department}` : complaintPreview?.explanation ?? ''}</p>
+                <p id="complaintText">{complaintRecord?.text_improved ?? complaintPreview?.content ?? ''}</p>
+                {complaintRecord?.evidence_text && (
+                  <div className="mt-4 rounded-2xl border border-[#d8e7d8] bg-[#f5fbf6] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7a57]">Evidence Section</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-[#34503a]">{complaintRecord.evidence_text}</p>
+                  </div>
+                )}
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button id="editBtn" onClick={handleStartComplaint} className="rounded-lg border border-[#d8cfc4] bg-white px-4 py-2 text-sm font-semibold text-[#4b3b31]" type="button">
                     Edit
@@ -771,6 +1035,13 @@ export default function App() {
                   type="button"
                 >
                   Civic Guidance
+                </button>
+                <button
+                  onClick={() => setWorkspaceMode('dashboard')}
+                  className={cn('rounded-2xl px-4 py-2 text-sm font-semibold transition', workspaceMode === 'dashboard' ? 'bg-[#2f7d4b] text-white' : 'text-[#5f7c66]')}
+                  type="button"
+                >
+                  Dashboard
                 </button>
               </div>
             </div>
@@ -889,7 +1160,7 @@ export default function App() {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : workspaceMode === 'guidance' ? (
               <div className="flex-1 overflow-y-auto pr-1">
                 <div className="space-y-6">
                   <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
@@ -985,6 +1256,16 @@ export default function App() {
                     </div>
                   )}
                 </div>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-1">
+                <ComplaintDashboard
+                  dashboard={complaintDashboard}
+                  loading={dashboardLoading}
+                  error={dashboardError}
+                  onRefresh={() => void refreshComplaintDashboard()}
+                  onResolve={(id) => void handleResolveComplaint(id)}
+                />
               </div>
             )}
           </div>

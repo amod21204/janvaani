@@ -1,0 +1,29 @@
+CREATE TABLE IF NOT EXISTS auth_users (
+  id VARCHAR(64) PRIMARY KEY,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  occupation VARCHAR(255) NOT NULL,
+  age VARCHAR(32) NOT NULL,
+  address TEXT NOT NULL,
+  phone_number VARCHAR(32) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS auth_otp_challenges (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  purpose VARCHAR(32) NOT NULL,
+  otp VARCHAR(16) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT auth_otp_challenges_user_fk FOREIGN KEY (user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token VARCHAR(128) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT auth_sessions_user_fk FOREIGN KEY (user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+);
