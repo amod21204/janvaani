@@ -23,6 +23,7 @@ import ReactMarkdown from 'react-markdown';
 import {HELPLINE_ENTRIES} from './data/helplines.ts';
 import {cn} from './lib/utils.ts';
 import VoiceToText from './components/VoiceToText.tsx';
+import HelpAndGuidance from './components/HelpAndGuidance.jsx';
 import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
 import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
 import {generateLegalDocument} from './services/gemini.ts';
@@ -212,6 +213,33 @@ export default function App() {
     window.setTimeout(() => {
       document.getElementById('complaintSection')?.scrollIntoView({behavior: 'smooth', block: 'start'});
     }, 50);
+  };
+
+  const handleHelplinePrefill = (helplineTitle: string) => {
+    setWorkspaceMode('drafting');
+    setInput((prev) => (prev.trim() ? prev : `Complaint regarding ${helplineTitle}: `));
+    window.setTimeout(() => {
+      document.getElementById('complaintSection')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 50);
+  };
+
+  const handleGuidedStart = (query: string, docType: string) => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+      return;
+    }
+
+    if (docType === 'Complaint' || docType === 'FIR') {
+      setWorkspaceMode('drafting');
+      setInput(normalizedQuery);
+      window.setTimeout(() => {
+        document.getElementById('complaintSection')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }, 50);
+      return;
+    }
+
+    setWorkspaceMode('guidance');
+    setGuidanceQuery(normalizedQuery);
   };
 
   const handleSend = async () => {
@@ -689,44 +717,9 @@ export default function App() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[28px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
-            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><Phone className="h-5 w-5" /></div>
-                <div>
-                  <h2 className="text-lg font-bold text-[#281e17]">Toll-Free Help Numbers</h2>
-                  <p className="text-sm text-[#7a6454]">Electricity, roads, sanitation, utilities, and emergency support.</p>
-                </div>
-              </div>
-            </div>
-            <div className="max-h-[34vh] overflow-y-auto p-5">
-              <div className="space-y-4">
-                {Object.entries(helplineGroups).map(([category, entries]) => (
-                  <div key={category} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9d7d67]">{category}</p>
-                    <div className="mt-3 space-y-3">
-                      {entries.map((entry) => (
-                        <div key={entry.title} className="rounded-2xl bg-[#faf6f1] p-3">
-                          <p className="text-sm font-bold text-[#2d241d]">{entry.title}</p>
-                          <p className="mt-1 text-base font-bold text-[#b14d21]">{entry.numbers.join(' / ')}</p>
-                          <p className="mt-1 text-xs leading-relaxed text-[#7b6657]">{entry.description}</p>
-                          {entry.sourceHref && entry.sourceLabel && (
-                            <a href={entry.sourceHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#9a491f]">
-                              {entry.sourceLabel}
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
         </aside>
 
-        <section className="overflow-hidden rounded-[32px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+        <HelpAndGuidance helplineGroups={helplineGroups} onHelplinePrefill={handleHelplinePrefill} onGuidedStart={handleGuidedStart}>
           <div className="border-b border-[#ece2d6] bg-[radial-gradient(circle_at_top_left,#fff2e8_0%,#fffaf5_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
@@ -971,7 +964,7 @@ export default function App() {
               </div>
             )}
           </div>
-        </section>
+        </HelpAndGuidance>
       </main>
     </div>
   );
