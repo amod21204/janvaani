@@ -1,55 +1,113 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { 
-  Send, 
-  Download, 
-  FileText, 
-  MessageSquare, 
-  AlertCircle, 
-  Loader2, 
-  Trash2,
-  Scale,
-  Languages,
-  Info,
+import {useEffect, useMemo, useRef, useState} from 'react';
+import {AnimatePresence, motion} from 'motion/react';
+import {
+  AlertCircle,
+  Check,
   Copy,
-  Check
-} from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import { jsPDF } from "jspdf";
-import { generateLegalDocument } from "./services/gemini.ts";
-import { cn } from "./lib/utils.ts";
+  Download,
+  ExternalLink,
+  FileText,
+  FolderKanban,
+  Info,
+  Languages,
+  Loader2,
+  LogOut,
+  Phone,
+  Scale,
+  Search,
+  Send,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+import {FORM_CATEGORIES, GOVERNMENT_FORM_REFERENCES, type FormCategory} from './data/forms.ts';
+import {HELPLINE_ENTRIES} from './data/helplines.ts';
+import {cn} from './lib/utils.ts';
+import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
+import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
+import {generateLegalDocument} from './services/gemini.ts';
+import type {FormSuggestion, GeneratedDocument} from './types/legal.ts';
 
 interface Message {
   id: string;
-  role: "user" | "ai";
+  role: 'user' | 'ai';
   text: string;
-  document?: {
-    type: string;
-    title: string;
-    content: string;
-    language: string;
-    explanation: string;
-  };
+  document?: GeneratedDocument;
+  suggestions?: FormSuggestion[];
+}
+
+const STORAGE_KEYS = {
+  sessionToken: 'janvaani.sessionToken',
+} as const;
+
+const WELCOME = 'Namaste! I am JAN-VAANI, your AI Civic Legal Copilot.';
+const ALL_CATEGORIES = 'All Categories';
+
+const emptyProfile = {
+  fullName: '',
+  email: '',
+  occupation: '',
+  age: '',
+  address: '',
+  phoneNumber: '',
+  password: '',
+};
+
+function welcomeMessages(user: AuthUser | null): Message[] {
+  return [
+    {
+      id: '1',
+      role: 'ai',
+      text: user ? `Namaste, ${user.fullName}. ${WELCOME}` : WELCOME,
+    },
+  ];
+}
+
+function enrichPrompt(prompt: string, user: AuthUser) {
+  return `${prompt}
+
+Citizen details:
+Name: ${user.fullName}
+Occupation: ${user.occupation}
+Age: ${user.age}
+Address: ${user.address}
+Phone number: ${user.phoneNumber}`;
 }
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "ai",
-      text: "Namaste! I am JAN-VAANI, your AI Civic Legal Copilot. Describe your problem in simple language (Hindi, English, or any other), and I will help you draft RTI applications, complaint letters, or legal notices.",
-    },
-  ]);
-  const [input, setInput] = useState("");
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [loginForm, setLoginForm] = useState({...emptyProfile});
+  const [signupForm, setSignupForm] = useState({...emptyProfile});
+  const [otpState, setOtpState] = useState<LoginResult | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>(welcomeMessages(null));
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<FormCategory | typeof ALL_CATEGORIES>(ALL_CATEGORIES);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const token = typeof window === 'undefined' ? null : window.localStorage.getItem(STORAGE_KEYS.sessionToken);
+    if (!token) {
+      return;
+    }
+
+    void restoreSession(token).then((user) => {
+      if (!user) {
+        window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
+        return;
+      }
+      setCurrentUser(user);
+      setMessages(welcomeMessages(user));
+    });
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -57,238 +115,622 @@ export default function App() {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const filteredForms = useMemo(() => {
+    return GOVERNMENT_FORM_REFERENCES.filter((form) => {
+      const query = searchTerm.trim().toLowerCase();
+      const matchesCategory = selectedCategory === ALL_CATEGORIES || form.category === selectedCategory;
+      const matchesSearch =
+        !query ||
+        form.subject.toLowerCase().includes(query) ||
+        form.category.toLowerCase().includes(query) ||
+        form.note?.toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
+    });
+  }, [searchTerm, selectedCategory]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      text: input,
+  const helplineGroups = useMemo(() => {
+    return HELPLINE_ENTRIES.reduce<Record<string, typeof HELPLINE_ENTRIES>>((acc, entry) => {
+      acc[entry.category] = [...(acc[entry.category] ?? []), entry];
+      return acc;
+    }, {});
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      const result = await login(loginForm.email.trim(), loginForm.password);
+      setOtpState(result);
+      setAuthError(null);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to login.');
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpState) {
+      return;
+    }
+
+    try {
+      const result = await verifyOtp(otpState.challengeId, otpCode);
+      setCurrentUser(result.user);
+      setMessages(welcomeMessages(result.user));
+      window.localStorage.setItem(STORAGE_KEYS.sessionToken, result.token);
+      setAuthError(null);
+      setOtpState(null);
+      setOtpCode('');
+      setLoginForm({...emptyProfile});
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to verify OTP.');
+    }
+  };
+
+  const handleSignup = async () => {
+    const payload: SignupPayload = {
+      fullName: signupForm.fullName.trim(),
+      email: signupForm.email.trim(),
+      occupation: signupForm.occupation.trim(),
+      age: signupForm.age.trim(),
+      address: signupForm.address.trim(),
+      phoneNumber: signupForm.phoneNumber.trim(),
+      password: signupForm.password.trim(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    if (Object.values(payload).some((value) => !value)) {
+      setAuthError('Please complete all sign up fields.');
+      return;
+    }
+
+    try {
+      await signup(payload);
+      setAuthMode('login');
+      setSignupForm({...emptyProfile});
+      setLoginForm((prev) => ({...prev, email: payload.email}));
+      setAuthError('Account created. Login with your email and password to receive an OTP.');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to create account.');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setMessages(welcomeMessages(null));
+    window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
+    setError(null);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || !currentUser) {
+      return;
+    }
+
+    const prompt = input.trim();
+    setMessages((prev) => [...prev, {id: Date.now().toString(), role: 'user', text: prompt}]);
+    setInput('');
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await generateLegalDocument(input);
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        text: result.explanation,
-        document: result,
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Something went wrong. Please try again.");
+      const result = await generateLegalDocument(enrichPrompt(prompt, currentUser));
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-reply`,
+          role: 'ai',
+          text: result.document.explanation,
+          document: result.document,
+          suggestions: result.suggestions,
+        },
+      ]);
+    } catch (caughtError: unknown) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const clearChat = () => {
+    setMessages(welcomeMessages(currentUser));
+    setError(null);
   };
 
-  const downloadPDF = (doc: any) => {
-    // Check if content contains non-ASCII characters (like Hindi)
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setError('Unable to copy text right now. Please try again.');
+    }
+  };
+
+  const downloadDocument = async (doc: GeneratedDocument) => {
+    const safeTitle = doc.title.replace(/\s+/g, '_');
     const isNonEnglish = /[^\x00-\x7F]/.test(doc.content);
-    
     if (isNonEnglish) {
-      // Fallback to text file for non-English content as standard jsPDF doesn't support UTF-8 easily
-      const element = document.createElement("a");
-      const file = new Blob([doc.content], { type: 'text/plain;charset=utf-8' });
-      element.href = URL.createObjectURL(file);
-      element.download = `${doc.type}_${doc.title.replace(/\s+/g, "_")}.txt`;
+      const file = new Blob([doc.content], {type: 'text/plain;charset=utf-8'});
+      const href = URL.createObjectURL(file);
+      const element = document.createElement('a');
+      element.href = href;
+      element.download = `${doc.type}_${safeTitle}.txt`;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
+      URL.revokeObjectURL(href);
       return;
     }
 
+    const {jsPDF} = await import('jspdf');
     const pdf = new jsPDF();
     pdf.setFontSize(16);
     pdf.text(doc.title, 20, 20);
     pdf.setFontSize(12);
-    
-    const splitText = pdf.splitTextToSize(doc.content.replace(/#/g, ""), 170);
-    pdf.text(splitText, 20, 40);
-    
-    pdf.save(`${doc.type}_${doc.title.replace(/\s+/g, "_")}.pdf`);
+    pdf.text(pdf.splitTextToSize(doc.content.replace(/#/g, ''), 170), 20, 40);
+    pdf.save(`${doc.type}_${safeTitle}.pdf`);
   };
 
-  const clearChat = () => {
-    setMessages([
-      {
-        id: "1",
-        role: "ai",
-        text: "Namaste! I am JAN-VAANI, your AI Civic Legal Copilot. Describe your problem in simple language (Hindi, English, or any other), and I will help you draft RTI applications, complaint letters, or legal notices.",
-      },
-    ]);
-  };
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fff0e3_0%,#f6efe6_42%,#ece3d5_100%)] px-4 py-8 text-[#2E2A26] sm:px-6">
+        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+          <section className="rounded-[32px] border border-[#decfbe] bg-[linear-gradient(135deg,#fff7ef_0%,#fffdf9_100%)] p-8 shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+            <div className="flex items-center gap-3">
+              <div className="rounded-3xl bg-[#a6481f] p-3 text-white">
+                <Scale className="h-7 w-7" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b765f]">Citizen Access Portal</p>
+                <h1 className="text-3xl font-bold text-[#261b14]">JAN-VAANI</h1>
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-3xl border border-[#eadfce] bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Drafting</p>
+                <p className="mt-2 text-lg font-bold text-[#2b221b]">RTI + Complaints</p>
+              </div>
+              <div className="rounded-3xl border border-[#eadfce] bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Citizen Profile</p>
+                <p className="mt-2 text-lg font-bold text-[#2b221b]">Name to address</p>
+              </div>
+              <div className="rounded-3xl border border-[#eadfce] bg-white/90 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Support</p>
+                <p className="mt-2 text-lg font-bold text-[#2b221b]">Forms + Helplines</p>
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-[28px] border border-[#eadfce] bg-white p-6">
+              <h2 className="text-xl font-bold text-[#261d16]">What you can do here</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl bg-[#faf5ef] p-4">
+                  <p className="text-sm font-semibold text-[#3b2d23]">Profile-aware drafts</p>
+                  <p className="mt-1 text-sm text-[#775f4d]">Use your saved name, address, age, occupation, and phone details in applications.</p>
+                </div>
+                <div className="rounded-2xl bg-[#faf5ef] p-4">
+                  <p className="text-sm font-semibold text-[#3b2d23]">Complaint support</p>
+                  <p className="mt-1 text-sm text-[#775f4d]">Browse official forms and immediate complaint helplines in one place.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-6">
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-[#b14d21]" />
+                <h2 className="text-lg font-bold text-[#261d16]">Quick Toll-Free Numbers</h2>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {HELPLINE_ENTRIES.slice(0, 6).map((entry) => (
+                  <div key={`${entry.category}-${entry.title}`} className="rounded-2xl border border-[#efe2d4] bg-[#faf6f1] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9f7a62]">{entry.category}</p>
+                    <p className="mt-1 text-sm font-bold text-[#2d241d]">{entry.title}</p>
+                    <p className="mt-2 text-base font-bold text-[#b14d21]">{entry.numbers.join(' / ')}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[32px] border border-[#decfbe] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
+            <div className="flex rounded-2xl bg-[#f7efe6] p-1">
+              <button onClick={() => { setAuthMode('login'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'login' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Login</button>
+              <button onClick={() => { setAuthMode('signup'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'signup' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Sign Up</button>
+            </div>
+            <div className="mt-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b765f]">{authMode === 'login' ? 'Welcome back' : 'Create your profile'}</p>
+              <h2 className="mt-2 text-2xl font-bold text-[#261d16]">{authMode === 'login' ? 'Access your citizen workspace' : 'Register for JAN-VAANI'}</h2>
+            </div>
+            {authError && <div className="mt-5 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{authError}</div>}
+            {authMode === 'login' ? (
+              <div className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Email Address</span>
+                  <input
+                    value={loginForm.email}
+                    onChange={(event) => setLoginForm((prev) => ({...prev, email: event.target.value}))}
+                    className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                    placeholder="Enter email address"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Password</span>
+                  <input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm((prev) => ({...prev, password: event.target.value}))}
+                    className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                    placeholder="Enter password"
+                  />
+                </label>
+                <button
+                  onClick={handleLogin}
+                  className="w-full rounded-2xl bg-[#b64d20] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#984119]"
+                  type="button"
+                >
+                  Continue to OTP
+                </button>
+                {otpState && (
+                  <div className="rounded-2xl border border-[#eadfce] bg-[#faf5ef] p-4">
+                    <p className="text-sm font-semibold text-[#3b2d23]">OTP Verification</p>
+                    <p className="mt-1 text-sm text-[#6f5a4a]">{otpState.message}</p>
+                    {otpState.demoOtp && (
+                      <p className="mt-2 text-sm font-bold text-[#b14d21]">Demo OTP: {otpState.demoOtp}</p>
+                    )}
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-sm font-semibold text-[#46372c]">Enter OTP</span>
+                      <input
+                        value={otpCode}
+                        onChange={(event) => setOtpCode(event.target.value)}
+                        className="w-full rounded-2xl border border-[#d8cfc4] bg-white px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                        placeholder="6-digit OTP"
+                      />
+                    </label>
+                    <button
+                      onClick={handleVerifyOtp}
+                      className="mt-3 w-full rounded-2xl border border-[#b64d20] px-4 py-3 text-sm font-semibold text-[#b64d20] transition hover:bg-[#fff0e7]"
+                      type="button"
+                    >
+                      Verify OTP and Login
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {[
+                  ['Full Name', 'fullName'],
+                  ['Email Address', 'email'],
+                  ['Occupation', 'occupation'],
+                  ['Age', 'age'],
+                  ['Phone Number', 'phoneNumber'],
+                ].map(([label, field]) => (
+                  <label key={field} className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#46372c]">{label}</span>
+                    <input
+                      value={signupForm[field as keyof typeof signupForm]}
+                      onChange={(event) => setSignupForm((prev) => ({...prev, [field]: event.target.value}))}
+                      className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                      placeholder={`Enter ${label.toLowerCase()}`}
+                    />
+                  </label>
+                ))}
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Address</span>
+                  <textarea
+                    value={signupForm.address}
+                    onChange={(event) => setSignupForm((prev) => ({...prev, address: event.target.value}))}
+                    className="min-h-[96px] w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                    placeholder="Enter full address"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Password</span>
+                  <input
+                    type="password"
+                    value={signupForm.password}
+                    onChange={(event) => setSignupForm((prev) => ({...prev, password: event.target.value}))}
+                    className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
+                    placeholder="Create password"
+                  />
+                </label>
+                <div className="sm:col-span-2">
+                  <button
+                    onClick={handleSignup}
+                    className="w-full rounded-2xl bg-[#b64d20] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#984119]"
+                    type="button"
+                  >
+                    Create account
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="mt-6 rounded-2xl border border-[#eadfce] bg-[#faf5ef] px-4 py-3 text-sm text-[#725f50]">
+              This version stores accounts locally in your browser for demo use.
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col font-sans text-[#333]">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="bg-orange-600 p-2 rounded-lg">
-            <Scale className="text-white w-6 h-6" />
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8f4ef_0%,#f4f1ea_48%,#efe7da_100%)] text-[#2E2A26]">
+      <header className="border-b border-[#d8cfc4] bg-[#fbf7f1]/90 px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[#a6481f] p-2.5 text-white">
+              <Scale className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-[#251d17]">JAN-VAANI</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6f5b]">Citizen Dashboard</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900">JAN-VAANI</h1>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">AI Civic Legal Copilot</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={clearChat}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-            title="Clear Chat"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
-            <Languages className="w-3.5 h-3.5" />
-            <span>Multilingual Support</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#dfd4c8] bg-white px-4 py-3">
+              <div className="rounded-xl bg-[#f3e1d0] p-2 text-[#a6481f]">
+                <UserRound className="h-4 w-4" />
+              </div>
+              <div className="text-sm">
+                <p className="font-bold text-[#2b221b]">{currentUser.fullName}</p>
+                <p className="text-[#7a6657]">{currentUser.occupation}</p>
+              </div>
+            </div>
+            <div className="hidden items-center gap-2 rounded-full border border-[#d8cfc4] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#6a584b] sm:flex">
+              <Languages className="h-3.5 w-3.5" />
+              <span>Profile + Forms + Helplines</span>
+            </div>
+            <button onClick={clearChat} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#735c4d]" type="button">
+              <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Reset</span>
+            </button>
+            <button onClick={handleLogout} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#735c4d]" type="button">
+              <span className="flex items-center gap-2"><LogOut className="h-4 w-4" />Logout</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Chat Area */}
-      <main className="flex-1 overflow-hidden flex flex-col max-w-4xl mx-auto w-full px-4 sm:px-6">
-        <div 
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto py-8 space-y-6 scroll-smooth"
-        >
-          <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "flex flex-col max-w-[85%] sm:max-w-[75%]",
-                  msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
-                )}
-              >
-                <div className={cn(
-                  "p-4 rounded-2xl shadow-sm",
-                  msg.role === "user" 
-                    ? "bg-orange-600 text-white rounded-tr-none" 
-                    : "bg-white border border-gray-200 text-gray-800 rounded-tl-none"
-                )}>
-                  <p className="text-sm sm:text-base leading-relaxed">{msg.text}</p>
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[390px,minmax(0,1fr)]">
+        <aside className="space-y-6">
+          <section className="overflow-hidden rounded-[28px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><ShieldCheck className="h-5 w-5" /></div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#281e17]">Citizen Profile</h2>
+                  <p className="text-sm text-[#7a6454]">Saved details used in drafting.</p>
                 </div>
+              </div>
+            </div>
+            <div className="grid gap-3 p-5 text-sm">
+              <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">Name</p><p className="mt-1 font-bold text-[#2d241d]">{currentUser.fullName}</p></div>
+              <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">Occupation</p><p className="mt-1 font-bold text-[#2d241d]">{currentUser.occupation}</p></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">Age</p><p className="mt-1 font-bold text-[#2d241d]">{currentUser.age}</p></div>
+                <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">Phone</p><p className="mt-1 font-bold text-[#2d241d]">{currentUser.phoneNumber}</p></div>
+              </div>
+              <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">Address</p><p className="mt-1 font-bold text-[#2d241d]">{currentUser.address}</p></div>
+            </div>
+          </section>
 
-                {msg.document && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="mt-4 w-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md"
-                  >
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-orange-600" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600">{msg.document.type}</span>
+          <section className="overflow-hidden rounded-[28px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><FolderKanban className="h-5 w-5" /></div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#281e17]">Government Forms Reference</h2>
+                  <p className="text-sm text-[#7a6454]">Search official forms and attached samples.</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8574]" />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by subject or type" className="w-full rounded-2xl border border-[#dacfc4] bg-[#fcfaf7] py-3 pl-10 pr-4 text-sm outline-none" />
+              </div>
+              <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value as FormCategory | typeof ALL_CATEGORIES)} className="w-full rounded-2xl border border-[#dacfc4] bg-[#fcfaf7] px-4 py-3 text-sm font-medium text-[#47362b] outline-none">
+                <option value={ALL_CATEGORIES}>{ALL_CATEGORIES}</option>
+                {FORM_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </div>
+            <div className="max-h-[34vh] overflow-y-auto border-t border-[#efe6dc] px-5 pb-5">
+              <div className="space-y-3 pt-5">
+                {filteredForms.map((form) => (
+                  <article key={`${form.category}-${form.subject}`} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a0795f]">{form.category}</p>
+                        <h3 className="mt-1 text-sm font-bold leading-snug text-[#2d221b]">{form.subject}</h3>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => copyToClipboard(msg.document?.content || "", msg.id)}
-                          className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 transition-colors"
-                        >
-                          {copiedId === msg.id ? (
-                            <><Check className="w-3.5 h-3.5 text-green-500" /> COPIED</>
-                          ) : (
-                            <><Copy className="w-3.5 h-3.5" /> COPY TEXT</>
+                      <span className="rounded-full bg-[#f2e2d2] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b4b24]">{form.format}</span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-sm text-[#6f5a4a]">
+                      <span>{form.size}</span>
+                      {form.href ? <a href={form.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-[#b14d21]">Download<ExternalLink className="h-4 w-4" /></a> : <span className="font-medium text-[#9f8d80]">Reference only</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[28px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><Phone className="h-5 w-5" /></div>
+                <div>
+                  <h2 className="text-lg font-bold text-[#281e17]">Toll-Free Help Numbers</h2>
+                  <p className="text-sm text-[#7a6454]">Electricity, roads, sanitation, utilities, and emergency support.</p>
+                </div>
+              </div>
+            </div>
+            <div className="max-h-[34vh] overflow-y-auto p-5">
+              <div className="space-y-4">
+                {Object.entries(helplineGroups).map(([category, entries]) => (
+                  <div key={category} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9d7d67]">{category}</p>
+                    <div className="mt-3 space-y-3">
+                      {entries.map((entry) => (
+                        <div key={entry.title} className="rounded-2xl bg-[#faf6f1] p-3">
+                          <p className="text-sm font-bold text-[#2d241d]">{entry.title}</p>
+                          <p className="mt-1 text-base font-bold text-[#b14d21]">{entry.numbers.join(' / ')}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-[#7b6657]">{entry.description}</p>
+                          {entry.sourceHref && entry.sourceLabel && (
+                            <a href={entry.sourceHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#9a491f]">
+                              {entry.sourceLabel}
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
                           )}
-                        </button>
-                        <button 
-                          onClick={() => downloadPDF(msg.document)}
-                          className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          {/[^\x00-\x7F]/.test(msg.document.content) ? "DOWNLOAD TXT" : "DOWNLOAD PDF"}
-                        </button>
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="p-6 bg-white overflow-x-auto">
-                      <div className="markdown-body prose prose-sm max-w-none">
-                        <ReactMarkdown>{msg.document.content}</ReactMarkdown>
-                      </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section className="overflow-hidden rounded-[32px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+          <div className="border-b border-[#ece2d6] bg-[radial-gradient(circle_at_top_left,#fff2e8_0%,#fffaf5_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#af5427]">Drafting Studio</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#221912]">Write with form-aware legal guidance</h2>
+                <p className="mt-2 text-sm text-[#756251]">Use your saved details, forms, and helplines together while drafting.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex h-[calc(100vh-13rem)] min-h-[720px] flex-col px-4 py-5 sm:px-6">
+            <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto pr-1">
+              <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-2xl bg-[#f3e1d0] p-2 text-[#a6481f]"><Info className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="text-base font-bold text-[#2b211a]">Helplines</h3>
+                    <p className="mt-1 text-sm text-[#796556]">Quick reference for electricity, roads, sanitation, utilities, and emergency numbers.</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {Object.entries(helplineGroups).slice(0, 4).map(([category, entries]) => (
+                    <div key={category} className="rounded-2xl border border-[#eadfce] bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9d7d67]">{category}</p>
+                      {entries.slice(0, 2).map((entry) => (
+                        <div key={entry.title} className="mt-2">
+                          <p className="text-sm font-bold text-[#2d241d]">{entry.title}</p>
+                          <p className="text-sm font-semibold text-[#b14d21]">{entry.numbers.join(' / ')}</p>
+                        </div>
+                      ))}
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {messages.map((msg) => (
+                  <motion.div
+                    key={msg.id}
+                    initial={{opacity: 0, y: 10}}
+                    animate={{opacity: 1, y: 0}}
+                    className={cn('flex flex-col max-w-[92%] sm:max-w-[78%]', msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start')}
+                  >
+                    <div className={cn('rounded-3xl px-5 py-4 shadow-sm', msg.role === 'user' ? 'rounded-tr-md bg-[#ff5a00] text-white' : 'rounded-tl-md border border-[#e6d9cc] bg-[#fffdfa] text-[#2d241d]')}>
+                      <p className="text-sm leading-relaxed sm:text-base">{msg.text}</p>
+                    </div>
+
+                    {msg.document && (
+                      <motion.div
+                        initial={{opacity: 0, scale: 0.97}}
+                        animate={{opacity: 1, scale: 1}}
+                        className="mt-4 w-full overflow-hidden rounded-3xl border border-[#e8dccf] bg-white shadow-[0_18px_40px_rgba(75,53,33,0.08)]"
+                      >
+                        <div className="flex items-center justify-between border-b border-[#eee3d7] bg-[#fbf7f2] px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-[#b34f21]" />
+                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8c6952]">{msg.document.type}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <button onClick={() => copyToClipboard(msg.document?.content || '', msg.id)} className="flex items-center gap-1.5 text-xs font-bold text-[#6b5646]" type="button">
+                              {copiedId === msg.id ? <><Check className="h-3.5 w-3.5 text-green-600" /> COPIED</> : <><Copy className="h-3.5 w-3.5" /> COPY TEXT</>}
+                            </button>
+                            <button onClick={() => void downloadDocument(msg.document)} className="flex items-center gap-1.5 text-xs font-bold text-[#b14d21]" type="button">
+                              <Download className="h-3.5 w-3.5" />
+                              {/[^\x00-\x7F]/.test(msg.document.content) ? 'DOWNLOAD TXT' : 'DOWNLOAD PDF'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="max-h-[440px] overflow-auto p-6">
+                          <div className="markdown-body prose prose-sm max-w-none">
+                            <ReactMarkdown>{msg.document.content}</ReactMarkdown>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {!!msg.suggestions?.length && (
+                      <div className="mt-4 w-full rounded-3xl border border-[#e7dccf] bg-[#faf6f1] p-4">
+                        <div className="flex items-center gap-2">
+                          <FolderKanban className="h-4 w-4 text-[#b14d21]" />
+                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8c6952]">Suggested Reference Files</p>
+                        </div>
+                        <div className="mt-3 grid gap-3">
+                          {msg.suggestions.map((suggestion) => (
+                            <div key={`${msg.id}-${suggestion.category}-${suggestion.subject}`} className="flex flex-col gap-2 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9d7d67]">{suggestion.category}</p>
+                                <p className="mt-1 text-sm font-bold text-[#2d241d]">{suggestion.subject}</p>
+                                <p className="mt-1 text-xs text-[#7a6556]">
+                                  {suggestion.size} • {suggestion.format.toUpperCase()}
+                                  {suggestion.note ? ` • ${suggestion.note}` : ''}
+                                </p>
+                              </div>
+                              {suggestion.href ? (
+                                <a href={suggestion.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#b14d21]">
+                                  Open file
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              ) : (
+                                <span className="text-xs font-medium text-[#9a8778]">Catalogue reference only</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          
-          {isLoading && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-gray-400 italic text-sm"
-            >
-              <Loader2 className="w-4 h-4 animate-spin" />
-              JAN-VAANI is drafting your document...
-            </motion.div>
-          )}
+                ))}
+              </AnimatePresence>
 
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-lg text-sm"
-            >
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </motion.div>
-          )}
-        </div>
+              {isLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 text-sm italic text-[#8a7465]"><Loader2 className="h-4 w-4 animate-spin" />JAN-VAANI is drafting your document...</motion.div>}
+              {error && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{error}</motion.div>}
+            </div>
 
-        {/* Input Area */}
-        <div className="py-6 bg-[#F8F9FA]">
-          <div className="relative group">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Describe your problem (e.g., 'I want to file an RTI for road repair status in my area')..."
-              className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-none shadow-sm min-h-[60px] max-h-[200px]"
-              rows={1}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className="absolute right-3 bottom-3 p-2.5 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 disabled:hover:bg-orange-600 transition-all shadow-lg shadow-orange-600/20"
-            >
-              <Send className="w-5 h-5" />
-            </button>
+            <div className="mt-5 border-t border-[#ece2d6] pt-5">
+              <div className="relative">
+                <textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                  placeholder="Ask for a draft, form, or complaint using your saved profile details..."
+                  className="min-h-[72px] w-full rounded-[28px] border border-[#dacfc4] bg-[#fcfaf7] px-5 py-4 pr-16 text-sm shadow-sm outline-none"
+                  rows={1}
+                />
+                <button onClick={() => void handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-3 right-3 rounded-2xl bg-[#b64d20] p-3 text-white disabled:opacity-50" type="button">
+                  <Send className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#94806f]">
+                <span className="flex items-center gap-1"><Info className="h-3 w-3" /> AI Generated Drafts</span>
+                <span className="flex items-center gap-1"><Scale className="h-3 w-3" /> Verify before official submission</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-3 flex items-center justify-center gap-4 text-[10px] text-gray-400 font-medium uppercase tracking-widest">
-            <span className="flex items-center gap-1"><Info className="w-3 h-3" /> AI Generated Drafts</span>
-            <span className="flex items-center gap-1"><Scale className="w-3 h-3" /> Verify before use</span>
-          </div>
-        </div>
+        </section>
       </main>
-
-      {/* Footer / Info */}
-      <footer className="bg-white border-t border-gray-100 py-3 px-6 text-center">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em]">
-          Empowering Citizens through AI & Legal Literacy
-        </p>
-      </footer>
     </div>
   );
 }

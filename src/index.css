@@ -1,25 +1,38 @@
 @import "tailwindcss";
 
 @layer base {
+  body {
+    @apply bg-[#f6f0e8] text-[#2e2a26];
+  }
+
   .markdown-body {
-    @apply text-sm leading-relaxed;
+    @apply text-sm leading-relaxed text-[#2e2a26];
   }
   .markdown-body h1 {
-    @apply text-xl font-bold mb-4;
+    @apply mb-4 text-xl font-bold text-[#1f1813];
   }
   .markdown-body h2 {
-    @apply text-lg font-semibold mb-3;
+    @apply mb-3 mt-6 text-lg font-semibold text-[#2f241d];
+  }
+  .markdown-body h3 {
+    @apply mb-2 mt-4 text-base font-semibold text-[#3c2d23];
   }
   .markdown-body p {
     @apply mb-3;
   }
   .markdown-body ul {
-    @apply list-disc list-inside mb-3;
+    @apply mb-3 list-disc list-inside;
   }
   .markdown-body ol {
-    @apply list-decimal list-inside mb-3;
+    @apply mb-3 list-decimal list-inside;
   }
   .markdown-body strong {
-    @apply font-bold;
+    @apply font-bold text-[#1f1813];
+  }
+  .markdown-body hr {
+    @apply my-5 border-[#e8dccf];
+  }
+  .markdown-body blockquote {
+    @apply my-4 border-l-4 border-[#d79b79] bg-[#fbf3ec] px-4 py-2 text-[#6e5748];
   }
 }
