@@ -52,6 +52,14 @@ async function startServer() {
     res.json({status: 'ok'});
   });
 
+  app.get('/api/public-config', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({
+      whatsappNumber: process.env.WHATSAPP_PHONE_NUMBER || null,
+      welcomeMessage: process.env.WELCOME_MESSAGE || null,
+    });
+  });
+
   app.post('/translate', translateComplaintController);
   app.use('/get-guidance', guidanceRouter);
 

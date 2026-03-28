@@ -93,6 +93,22 @@ function verifyPassword(password: string, hash: string) {
   return timingSafeEqual(candidate, Buffer.from(derived, 'hex'));
 }
 
+function normalizePhoneNumber(value: string) {
+  return value.replace(/[^0-9+]/g, '');
+}
+
+function findUserByIdentifier(store: AuthStore, identifier: string) {
+  const trimmed = identifier.trim();
+  const normalizedEmail = trimmed.toLowerCase();
+  const normalizedPhone = normalizePhoneNumber(trimmed);
+
+  return store.users.find(
+    (candidate) =>
+      candidate.email === normalizedEmail ||
+      normalizePhoneNumber(candidate.phoneNumber) === normalizedPhone,
+  );
+}
+
 async function readStore(): Promise<AuthStore> {
   try {
     const raw = await readFile(authStorePath, 'utf8');
@@ -113,12 +129,13 @@ export async function registerUser(payload: SignupPayload): Promise<PublicUser> 
   const store = await readStore();
   const email = payload.email.trim().toLowerCase();
   const phoneNumber = payload.phoneNumber.trim();
+  const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
 
   if (store.users.some((user) => user.email === email)) {
     throw new Error('An account with this email already exists.');
   }
 
-  if (store.users.some((user) => user.phoneNumber === phoneNumber)) {
+  if (store.users.some((user) => normalizePhoneNumber(user.phoneNumber) === normalizedPhoneNumber)) {
     throw new Error('An account with this phone number already exists.');
   }
 
@@ -139,9 +156,9 @@ export async function registerUser(payload: SignupPayload): Promise<PublicUser> 
   return toPublicUser(newUser);
 }
 
-export async function validateLogin(email: string, password: string): Promise<PublicUser> {
+export async function validateLogin(identifier: string, password: string): Promise<PublicUser> {
   const store = await readStore();
-  const user = store.users.find((candidate) => candidate.email === email.trim().toLowerCase());
+  const user = findUserByIdentifier(store, identifier);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
     throw new Error('Invalid email or password.');
@@ -150,9 +167,9 @@ export async function validateLogin(email: string, password: string): Promise<Pu
   return toPublicUser(user);
 }
 
-export async function createOtpChallenge(email: string) {
+export async function createOtpChallenge(identifier: string) {
   const store = await readStore();
-  const user = store.users.find((candidate) => candidate.email === email.trim().toLowerCase());
+  const user = findUserByIdentifier(store, identifier);
   if (!user) {
     throw new Error('Account not found.');
   }

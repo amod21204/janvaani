@@ -501,12 +501,12 @@ export default function App() {
             {authMode === 'login' ? (
               <div className="mt-6 space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Email Address</span>
+                  <span className="mb-2 block text-sm font-semibold text-[#46372c]">Email or Phone Number</span>
                   <input
                     value={loginForm.email}
                     onChange={(event) => setLoginForm((prev) => ({...prev, email: event.target.value}))}
                     className="w-full rounded-2xl border border-[#d8cfc4] bg-[#fcfaf7] px-4 py-3 outline-none transition focus:border-[#c85e2f] focus:ring-4 focus:ring-[#c85e2f]/10"
-                    placeholder="Enter email address"
+                    placeholder="Enter email address or phone number"
                   />
                 </label>
                 <label className="block">
