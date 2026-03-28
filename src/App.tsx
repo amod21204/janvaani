@@ -84,7 +84,6 @@ function buildGuidanceText(result: CivicGuidanceResult) {
 }
 
 export default function App() {
-  const [showLanding, setShowLanding] = useState(true);
   const [workspaceMode, setWorkspaceMode] = useState<'drafting' | 'guidance'>('drafting');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -106,19 +105,6 @@ export default function App() {
   const [guidanceError, setGuidanceError] = useState<string | null>(null);
   const [guidanceTranslating, setGuidanceTranslating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const landingParticles = useMemo(
-    () =>
-      Array.from({length: 26}, (_value, index) => ({
-        id: index,
-        size: 4 + (index % 5) * 3,
-        left: `${(index * 13) % 100}%`,
-        top: `${(index * 17) % 100}%`,
-        duration: 10 + (index % 6) * 2,
-        delay: (index % 7) * 0.7,
-      })),
-    [],
-  );
 
   useEffect(() => {
     const token = typeof window === 'undefined' ? null : window.localStorage.getItem(STORAGE_KEYS.sessionToken);
@@ -177,7 +163,6 @@ export default function App() {
       setCurrentUser(result.user);
       setMessages(welcomeMessages(result.user));
       window.localStorage.setItem(STORAGE_KEYS.sessionToken, result.token);
-      setShowLanding(false);
       setAuthError(null);
       setOtpState(null);
       setOtpCode('');
@@ -215,7 +200,6 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setShowLanding(true);
     setCurrentUser(null);
     setMessages(welcomeMessages(null));
     window.localStorage.removeItem(STORAGE_KEYS.sessionToken);
@@ -227,17 +211,6 @@ export default function App() {
     setWorkspaceMode('drafting');
     window.setTimeout(() => {
       document.getElementById('complaintSection')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-    }, 50);
-  };
-
-  const enterDashboardWorkspace = (mode: 'drafting' | 'guidance') => {
-    setWorkspaceMode(mode);
-    setShowLanding(false);
-  };
-
-  const scrollToSection = (sectionId: string) => {
-    window.setTimeout(() => {
-      document.getElementById(sectionId)?.scrollIntoView({behavior: 'smooth', block: 'start'});
     }, 50);
   };
 
@@ -402,150 +375,9 @@ export default function App() {
     }
   };
 
-  if (showLanding && currentUser) {
-    return (
-      <div className="landing-shell text-[#2E2A26]">
-        <nav className="landing-navbar">
-          <div className="landing-logo-wrap">
-            <div className="landing-logo-icon">
-              <Scale className="h-5 w-5" />
-            </div>
-            <div className="logo">JanVaani</div>
-          </div>
-          <ul>
-            <li><button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} type="button">Home</button></li>
-            <li><button onClick={() => enterDashboardWorkspace('drafting')} type="button">Complaint</button></li>
-            <li><button onClick={() => enterDashboardWorkspace('guidance')} type="button">Guidance</button></li>
-            <li><button onClick={() => window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})} type="button">Track</button></li>
-            <li><button onClick={() => enterDashboardWorkspace('drafting')} type="button">Knowledge</button></li>
-          </ul>
-        </nav>
-
-        <section id="landingHero" className="hero">
-          <div className="particles-js">
-            {landingParticles.map((particle) => (
-              <motion.span
-                key={particle.id}
-                className="landing-particle"
-                style={{
-                  width: particle.size,
-                  height: particle.size,
-                  left: particle.left,
-                  top: particle.top,
-                }}
-                animate={{y: [0, -24, 0], opacity: [0.25, 0.85, 0.25], scale: [1, 1.35, 1]}}
-                transition={{duration: particle.duration, repeat: Number.POSITIVE_INFINITY, delay: particle.delay, ease: 'easeInOut'}}
-              />
-            ))}
-          </div>
-
-          <div className="hero-content">
-            <motion.h1 className="title" initial={{opacity: 0, y: 24}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8}}>
-              JANVAANI
-            </motion.h1>
-            <motion.p className="tagline" initial={{opacity: 0, y: 18}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8, delay: 0.15}}>
-              Your AI Civic & Legal Assistant
-            </motion.p>
-            <motion.div className="buttons" initial={{opacity: 0, y: 18}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8, delay: 0.3}}>
-              <button id="startBtn" onClick={() => enterDashboardWorkspace('drafting')} type="button">
-                Start Complaint
-              </button>
-              <button id="guideBtn" onClick={() => enterDashboardWorkspace('guidance')} type="button">
-                Get Guidance
-              </button>
-            </motion.div>
-          </div>
-        </section>
-
-        <div className="px-4 pb-12 sm:px-6">
-          <div className="mx-auto max-w-4xl rounded-[32px] border border-[#decfbe] bg-white/92 p-8 shadow-[0_28px_60px_rgba(71,49,27,0.08)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b765f]">Welcome Back</p>
-            <h2 className="mt-2 text-3xl font-bold text-[#261d16]">{currentUser.fullName}</h2>
-            <p className="mt-3 text-sm text-[#725f50]">Your workspace is ready. Choose where you want to continue.</p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <button onClick={() => enterDashboardWorkspace('drafting')} className="rounded-2xl bg-[#b64d20] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#984119]" type="button">
-                Open Complaint Workspace
-              </button>
-              <button onClick={() => enterDashboardWorkspace('guidance')} className="rounded-2xl border border-[#d8cfc4] bg-white px-5 py-4 text-base font-semibold text-[#4a3b31] transition hover:bg-[#faf5ef]" type="button">
-                Open Guidance Workspace
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (!currentUser) {
     return (
-      <div className="landing-shell text-[#2E2A26]">
-        <nav className="landing-navbar">
-          <div className="landing-logo-wrap">
-            <div className="landing-logo-icon">
-              <Scale className="h-5 w-5" />
-            </div>
-            <div className="logo">JanVaani</div>
-          </div>
-          <ul>
-            <li><button onClick={() => scrollToSection('landingHero')} type="button">Home</button></li>
-            <li><button onClick={() => { setAuthMode('login'); scrollToSection('authPortal'); }} type="button">Complaint</button></li>
-            <li><button onClick={() => { setAuthMode('signup'); scrollToSection('authPortal'); }} type="button">Guidance</button></li>
-            <li><button onClick={() => scrollToSection('quickNumbers')} type="button">Track</button></li>
-            <li><button onClick={() => scrollToSection('authPortal')} type="button">Knowledge</button></li>
-          </ul>
-        </nav>
-
-        <section id="landingHero" className="hero">
-          <div className="particles-js">
-            {landingParticles.map((particle) => (
-              <motion.span
-                key={particle.id}
-                className="landing-particle"
-                style={{
-                  width: particle.size,
-                  height: particle.size,
-                  left: particle.left,
-                  top: particle.top,
-                }}
-                animate={{y: [0, -24, 0], opacity: [0.25, 0.85, 0.25], scale: [1, 1.35, 1]}}
-                transition={{duration: particle.duration, repeat: Number.POSITIVE_INFINITY, delay: particle.delay, ease: 'easeInOut'}}
-              />
-            ))}
-          </div>
-
-          <div className="hero-content">
-            <motion.h1 className="title" initial={{opacity: 0, y: 24}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8}}>
-              JANVAANI
-            </motion.h1>
-            <motion.p className="tagline" initial={{opacity: 0, y: 18}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8, delay: 0.15}}>
-              Your AI Civic & Legal Assistant
-            </motion.p>
-            <motion.div className="buttons" initial={{opacity: 0, y: 18}} animate={{opacity: 1, y: 0}} transition={{duration: 0.8, delay: 0.3}}>
-              <button
-                id="startBtn"
-                onClick={() => {
-                  setAuthMode('login');
-                  scrollToSection('authPortal');
-                }}
-                type="button"
-              >
-                Start Complaint
-              </button>
-              <button
-                id="guideBtn"
-                onClick={() => {
-                  setAuthMode('signup');
-                  scrollToSection('authPortal');
-                }}
-                type="button"
-              >
-                Get Guidance
-              </button>
-            </motion.div>
-          </div>
-        </section>
-
-        <div className="px-4 py-8 sm:px-6">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fff0e3_0%,#f6efe6_42%,#ece3d5_100%)] px-4 py-8 text-[#2E2A26] sm:px-6">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.1fr,0.9fr]">
           <section className="rounded-[32px] border border-[#decfbe] bg-[linear-gradient(135deg,#fff7ef_0%,#fffdf9_100%)] p-8 shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
             <div className="flex items-center gap-3">
@@ -587,7 +419,7 @@ export default function App() {
               </div>
             </div>
 
-            <div id="quickNumbers" className="mt-8 rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-6">
+            <div className="mt-8 rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-6">
               <div className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-[#b14d21]" />
                 <h2 className="text-lg font-bold text-[#261d16]">Quick Toll-Free Numbers</h2>
@@ -604,7 +436,7 @@ export default function App() {
             </div>
           </section>
 
-          <section id="authPortal" className="rounded-[32px] border border-[#decfbe] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
+          <section className="rounded-[32px] border border-[#decfbe] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
             <div className="flex rounded-2xl bg-[#f7efe6] p-1">
               <button onClick={() => { setAuthMode('login'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'login' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Login</button>
               <button onClick={() => { setAuthMode('signup'); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'signup' ? 'bg-white text-[#281e17]' : 'text-[#7a6657]')} type="button">Sign Up</button>
@@ -722,7 +554,6 @@ export default function App() {
             </div>
           </section>
         </div>
-      </div>
       </div>
     );
   }

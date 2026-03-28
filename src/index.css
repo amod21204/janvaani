@@ -3,7 +3,6 @@
 @layer base {
   body {
     @apply bg-[#f6f0e8] text-[#2e2a26];
-    font-family: 'Poppins', sans-serif;
   }
 
   .markdown-body {
@@ -39,79 +38,6 @@
 }
 
 @layer components {
-  .landing-shell {
-    @apply min-h-screen bg-[radial-gradient(circle_at_top_left,#fff0e3_0%,#f6efe6_42%,#ece3d5_100%)];
-  }
-
-  .landing-navbar {
-    @apply fixed left-0 top-0 z-20 flex w-full items-center justify-between px-6 py-4 text-white sm:px-10;
-  }
-
-  .landing-navbar ul {
-    @apply hidden list-none items-center gap-5 md:flex;
-  }
-
-  .landing-navbar button {
-    @apply cursor-pointer border-0 bg-transparent text-sm font-medium text-white/90 transition hover:text-white;
-  }
-
-  .landing-logo-wrap {
-    @apply flex items-center gap-3;
-  }
-
-  .landing-logo-icon {
-    @apply rounded-2xl bg-white/15 p-2 text-white backdrop-blur;
-  }
-
-  .logo {
-    @apply text-xl font-semibold tracking-[0.12em] text-white;
-  }
-
-  .hero {
-    @apply relative flex h-screen items-center justify-center overflow-hidden;
-  }
-
-  .particles-js {
-    @apply absolute inset-0 overflow-hidden bg-[linear-gradient(135deg,#2563eb,#1e3a8a)];
-  }
-
-  .particles-js::before {
-    content: "";
-    @apply absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.24),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.22),transparent_30%)];
-  }
-
-  .landing-particle {
-    @apply absolute rounded-full bg-white/70 shadow-[0_0_30px_rgba(255,255,255,0.35)];
-  }
-
-  .hero-content {
-    @apply relative z-10 px-4 text-center text-white;
-  }
-
-  .title {
-    @apply text-5xl font-bold tracking-[0.35em] sm:text-7xl;
-  }
-
-  .tagline {
-    @apply mt-3 text-lg text-white/85 sm:text-2xl;
-  }
-
-  .buttons {
-    @apply mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row;
-  }
-
-  .buttons button {
-    @apply min-w-[180px] cursor-pointer rounded-lg px-5 py-3 text-base font-semibold transition;
-  }
-
-  .buttons button:first-child {
-    @apply border-0 bg-white text-blue-600 hover:bg-blue-50;
-  }
-
-  .buttons button:last-child {
-    @apply border border-white bg-transparent text-white hover:bg-white/10;
-  }
-
   .primary-btn {
     @apply cursor-pointer rounded-lg border-0 bg-blue-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-blue-800;
   }
