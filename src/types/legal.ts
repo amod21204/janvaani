@@ -21,3 +21,11 @@ export interface GenerateDocumentResult {
   document: GeneratedDocument;
   suggestions: FormSuggestion[];
 }
+
+export interface CivicGuidanceResult {
+  query: string;
+  documents_required: string[];
+  steps: string[];
+  where_to_go: string;
+  tips: string[];
+}

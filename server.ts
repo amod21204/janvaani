@@ -6,6 +6,8 @@ import path from 'path';
 import {fileURLToPath} from 'url';
 import {createServer as createViteServer} from 'vite';
 
+import {guidanceRouter} from './src/routes/guidanceRoutes.ts';
+import {translateComplaintController} from './src/controllers/translateController.ts';
 import {createOtpChallenge, getUserFromSession, registerUser, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
 import {getFormSuggestions} from './src/server/form-suggestions.ts';
 import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.ts';
@@ -27,6 +29,9 @@ async function startServer() {
   app.get('/api/health', (_req, res) => {
     res.json({status: 'ok'});
   });
+
+  app.post('/translate', translateComplaintController);
+  app.use('/get-guidance', guidanceRouter);
 
   app.post('/api/auth/signup', async (req, res) => {
     try {
