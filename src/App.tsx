@@ -29,6 +29,7 @@ import type {AuthUser, LoginResult, SignupPayload} from './services/auth.ts';
 import {login, restoreSession, signup, verifyOtp} from './services/auth.ts';
 import {generateLegalDocument} from './services/gemini.ts';
 import {getCivicGuidance, translateGuidanceToHindi} from './services/guidance.ts';
+import {getPublicConfig} from './services/public-config.ts';
 import type {CivicGuidanceResult, FormSuggestion, GeneratedDocument} from './types/legal.ts';
 
 interface Message {
@@ -106,6 +107,7 @@ export default function App() {
   const [guidanceLoading, setGuidanceLoading] = useState(false);
   const [guidanceError, setGuidanceError] = useState<string | null>(null);
   const [guidanceTranslating, setGuidanceTranslating] = useState(false);
+  const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,6 +139,16 @@ export default function App() {
 
     document.getElementById('complaintOutput')?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
   }, [complaintPreview]);
+
+  useEffect(() => {
+    void getPublicConfig()
+      .then((config) => {
+        setWhatsappLink(config.whatsappLink);
+      })
+      .catch(() => {
+        setWhatsappLink(null);
+      });
+  }, []);
 
   const helplineGroups = useMemo(() => {
     return HELPLINE_ENTRIES.reduce<Record<string, typeof HELPLINE_ENTRIES>>((acc, entry) => {
@@ -446,6 +458,17 @@ export default function App() {
                   <p className="mt-1 text-sm text-[#775f4d]">Browse official forms and immediate complaint helplines in one place.</p>
                 </div>
               </div>
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-[#12351f] transition hover:brightness-95"
+                >
+                  <Phone className="h-4 w-4" />
+                  Chat on WhatsApp
+                </a>
+              )}
             </div>
 
             <div className="mt-8 rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-6">
