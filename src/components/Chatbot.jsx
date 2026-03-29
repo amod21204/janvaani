@@ -2,106 +2,60 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import {AnimatePresence, motion} from 'motion/react';
 import {Bot, MessageCircleMore, Sparkles, Trash2, X} from 'lucide-react';
 
-import {CHATBOT_SERVICES, FALLBACK_CATEGORIES, FALLBACK_SUGGESTIONS} from '../services/chatbotServices.js';
 import ChatInput from './ChatInput.jsx';
 import ChatMessage from './ChatMessage.jsx';
 
 const QUICK_ACTIONS = [
   {label: 'Apply Certificate', query: 'How to apply for income certificate?'},
   {label: 'File Complaint', query: 'How to file complaint?'},
-  {label: 'Check Documents', query: 'What documents are required for domicile certificate?'},
+  {label: 'Check Documents', query: 'What documents are required?'},
 ];
 
-function normalizeText(value) {
-  return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-}
+function buildMockReply(question) {
+  const normalized = question.toLowerCase();
 
-function tokenize(value) {
-  return normalizeText(value)
-    .split(' ')
-    .filter((token) => token.length > 1);
-}
-
-function scoreServiceMatch(query, service) {
-  const normalizedQuery = normalizeText(query);
-  const queryTokens = new Set(tokenize(query));
-
-  let score = 0;
-  const phrases = [service.label, ...(service.aliases ?? []), ...(service.keywords ?? [])];
-
-  for (const phrase of phrases) {
-    const normalizedPhrase = normalizeText(phrase);
-    if (!normalizedPhrase) {
-      continue;
-    }
-
-    if (normalizedQuery.includes(normalizedPhrase)) {
-      score += normalizedPhrase.includes(' ') ? 7 : 3;
-    }
-
-    for (const token of tokenize(phrase)) {
-      if (queryTokens.has(token)) {
-        score += 1;
-      }
-    }
+  if (normalized.includes('income certificate')) {
+    return [
+      'To apply for an income certificate:',
+      '1. Visit your state e-district portal or nearest Tehsildar office.',
+      '2. Fill the income certificate form and upload details.',
+      '3. Submit identity + address + income proof documents.',
+      '4. Track status online using your application number.',
+      '',
+      'Common documents:',
+      '- Aadhaar card',
+      '- Address proof',
+      '- Salary slip / income affidavit',
+      '- Passport-size photo',
+    ].join('\n');
   }
 
-  if (normalizedQuery.includes(service.category)) {
-    score += 2;
+  if (normalized.includes('complaint')) {
+    return [
+      'For filing a civic complaint:',
+      '1. Open the complaint section in JAN-VAANI.',
+      '2. Add issue details (location, date, department, evidence).',
+      '3. Attach photos/documents if available.',
+      '4. Submit and save the complaint reference number.',
+      '',
+      'Tip: Mention exact ward/area and affected timeline for faster action.',
+    ].join('\n');
   }
 
-  return score;
-}
-
-function findBestService(query) {
-  const services = Object.values(CHATBOT_SERVICES);
-
-  const ranked = services
-    .map((service) => ({service, score: scoreServiceMatch(query, service)}))
-    .sort((a, b) => b.score - a.score);
-
-  const best = ranked[0];
-  if (!best || best.score < 3) {
-    return null;
+  if (normalized.includes('document') || normalized.includes('docs')) {
+    return [
+      'Typical required documents (depends on service):',
+      '- Identity proof (Aadhaar / PAN / Voter ID)',
+      '- Address proof (ration card / utility bill)',
+      '- Passport-size photograph',
+      '- Application form',
+      '- Service-specific proof (income, residence, birth, etc.)',
+      '',
+      'Tell me the exact certificate/service and I will give a precise list.',
+    ].join('\n');
   }
 
-  return best.service;
-}
-
-function formatServiceResponse(service) {
-  return [
-    `${service.label} Guidance:`,
-    `Category: ${service.category}`,
-    `Office: ${service.office}`,
-    `Expected Time: ${service.time}`,
-    '',
-    'Required Documents:',
-    ...service.documents.map((item) => `- ${item}`),
-    '',
-    'Steps to Apply:',
-    ...service.steps.map((step, index) => `${index + 1}. ${step}`),
-  ].join('\n');
-}
-
-function buildBotReply(query) {
-  const matchedService = findBestService(query);
-
-  if (matchedService) {
-    return {
-      text: formatServiceResponse(matchedService),
-      suggestions: Object.values(CHATBOT_SERVICES)
-        .filter((entry) => entry.category === matchedService.category && entry.id !== matchedService.id)
-        .slice(0, 3)
-        .map((entry) => entry.label),
-      matchedService,
-    };
-  }
-
-  return {
-    text: `Sorry, I don't have exact info yet, but I can guide you. Please select a category: ${FALLBACK_CATEGORIES.join(', ')}`,
-    suggestions: FALLBACK_SUGGESTIONS,
-    matchedService: null,
-  };
+  return 'I can help with certificates, complaints, and government document checklists. Try one of the quick actions below.';
 }
 
 export default function Chatbot({onStartComplaint}) {
@@ -113,8 +67,7 @@ export default function Chatbot({onStartComplaint}) {
     {
       id: 'welcome',
       role: 'bot',
-      text: 'Namaste. I am JAN-VAANI Assistant. Ask me about certificates, complaints, IDs, and document checklists.',
-      suggestions: FALLBACK_SUGGESTIONS,
+      text: 'Namaste. I am JAN-VAANI Assistant. Ask me about certificates, complaints, and required documents.',
     },
   ]);
   const scrollRef = useRef(null);
@@ -134,28 +87,21 @@ export default function Chatbot({onStartComplaint}) {
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, isTyping, isOpen]);
 
-  const submitQuery = (query) => {
-    const normalizedQuery = query.trim();
-    if (!normalizedQuery || isTyping) {
+  const sendMessage = () => {
+    const query = inputValue.trim();
+    if (!query || isTyping) {
       return;
     }
 
-    const userMessage = {id: `u-${Date.now()}`, role: 'user', text: normalizedQuery};
+    const userMessage = {id: `u-${Date.now()}`, role: 'user', text: query};
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
 
     window.setTimeout(() => {
-      const reply = buildBotReply(normalizedQuery);
-      setMessages((prev) => [
-        ...prev,
-        {id: `b-${Date.now()}`, role: 'bot', text: reply.text, suggestions: reply.suggestions},
-      ]);
+      const replyText = buildMockReply(query);
+      setMessages((prev) => [...prev, {id: `b-${Date.now()}`, role: 'bot', text: replyText}]);
       setIsTyping(false);
-
-      if (reply.matchedService?.category === 'complaints') {
-        onStartComplaint?.();
-      }
 
       if (!isOpen) {
         setUnreadCount((prev) => prev + 1);
@@ -163,17 +109,12 @@ export default function Chatbot({onStartComplaint}) {
     }, 900);
   };
 
-  const sendMessage = () => {
-    submitQuery(inputValue);
-  };
-
   const clearChat = () => {
     setMessages([
       {
         id: 'welcome-reset',
         role: 'bot',
-        text: 'Chat cleared. Ask me about any government service and I will guide you step by step.',
-        suggestions: FALLBACK_SUGGESTIONS,
+        text: 'Chat cleared. Ask me anything about civic services.',
       },
     ]);
     setUnreadCount(0);
@@ -181,15 +122,15 @@ export default function Chatbot({onStartComplaint}) {
 
   return (
     <>
-      <div className="fixed bottom-5 right-5 z-[80] app-slide-up">
+      <div className="fixed bottom-5 right-5 z-[80]">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="btn-glass group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-[0_16px_30px_rgba(0,95,198,0.38)] transition hover:scale-105"
+          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-sky-700 text-white shadow-[0_16px_30px_rgba(37,99,235,0.35)] transition hover:scale-105"
           aria-label={isOpen ? 'Close chat' : 'Open chat'}
         >
           {isOpen ? <X className="h-6 w-6" /> : <MessageCircleMore className="h-6 w-6" />}
-          {!isOpen && unreadCount > 0 ? <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#ef4444]" /> : null}
+          {!isOpen && unreadCount > 0 ? <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#ff4a4a]" /> : null}
         </button>
       </div>
 
@@ -202,16 +143,16 @@ export default function Chatbot({onStartComplaint}) {
             transition={{duration: 0.25}}
             className="fixed inset-0 z-[79] md:inset-auto md:bottom-24 md:right-5 md:h-[640px] md:w-[420px]"
           >
-            <div className="glass-panel flex h-full flex-col border border-white/35 bg-[linear-gradient(150deg,rgba(240,247,255,0.75),rgba(239,246,255,0.86))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(32,54,86,0.24)]">
-              <header className="flex items-center justify-between border-b border-white/40 px-4 py-3">
+            <div className="flex h-full flex-col border border-slate-200 bg-[linear-gradient(150deg,rgba(248,250,252,0.95),rgba(239,246,255,0.92))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(37,99,235,0.2)]">
+              <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[#1264a3]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sky-700">
                     <Bot className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#111827]">JAN-VAANI Assistant</p>
-                    <p className="flex items-center gap-1 text-xs text-[#2563EB]">
-                      <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
+                    <p className="text-sm font-semibold text-ink-900">JAN-VAANI Assistant</p>
+                    <p className="flex items-center gap-1 text-xs text-emerald-700">
+                      <span className="h-2 w-2 rounded-full bg-[#44d13d]" />
                       Online
                     </p>
                   </div>
@@ -220,7 +161,7 @@ export default function Chatbot({onStartComplaint}) {
                 <button
                   type="button"
                   onClick={clearChat}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/50 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[#334155] transition hover:bg-white"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-ink-700 transition hover:bg-sky-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear Chat
@@ -229,18 +170,18 @@ export default function Chatbot({onStartComplaint}) {
 
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
                 {messages.map((message) => (
-                  <ChatMessage key={message.id} message={message} onSuggestionClick={submitQuery} />
+                  <ChatMessage key={message.id} message={message} />
                 ))}
 
                 {isTyping ? (
-                  <div className="flex items-center gap-2 text-xs font-medium text-[#475569]">
+                  <div className="flex items-center gap-2 text-xs font-medium text-ink-600">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse" />
                     AI is typing...
                   </div>
                 ) : null}
               </div>
 
-              <div className="border-t border-white/40 px-3 py-3 sm:px-4">
+              <div className="border-t border-slate-200 px-3 py-3 sm:px-4">
                 <div className="mb-2 flex flex-wrap gap-2">
                   {quickActions.map((action) => (
                     <button
@@ -252,7 +193,7 @@ export default function Chatbot({onStartComplaint}) {
                           onStartComplaint?.();
                         }
                       }}
-                      className="rounded-full border border-white/50 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#1E40AF] transition hover:bg-white"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-50"
                     >
                       {action.label}
                     </button>
@@ -268,5 +209,3 @@ export default function Chatbot({onStartComplaint}) {
     </>
   );
 }
-
-

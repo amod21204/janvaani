@@ -1,0 +1,32 @@
+{
+  "electricity": {
+    "category": "electricity",
+    "department": "Electricity Board",
+    "keywords": ["electricity", "power", "transformer", "streetlight", "voltage", "outage", "blackout"]
+  },
+  "water": {
+    "category": "water",
+    "department": "Water Department",
+    "keywords": ["water", "pipeline", "tap", "leakage", "water supply", "drinking water"]
+  },
+  "roads": {
+    "category": "roads",
+    "department": "Municipal Corporation",
+    "keywords": ["road", "roads", "pothole", "footpath", "divider", "traffic signal", "street"]
+  },
+  "sanitation": {
+    "category": "sanitation",
+    "department": "Sanitation Department",
+    "keywords": ["garbage", "waste", "trash", "sanitation", "unclean", "dump", "overflowing bin"]
+  },
+  "drainage": {
+    "category": "drainage",
+    "department": "Municipal Drainage Department",
+    "keywords": ["drain", "drainage", "sewage", "sewer", "waterlogging", "blocked drain"]
+  },
+  "public safety": {
+    "category": "public safety",
+    "department": "Local Civic Administration",
+    "keywords": ["encroachment", "unsafe", "hazard", "broken wall", "accident risk"]
+  }
+}
