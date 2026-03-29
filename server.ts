@@ -2,46 +2,54 @@ import 'dotenv/config';
 
 import express from 'express';
 import {existsSync} from 'fs';
+import type {AddressInfo} from 'net';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {createServer as createViteServer} from 'vite';
 
-import {guidanceRouter} from './src/routes/guidanceRoutes.ts';
-import {complaintRouter} from './src/routes/complaintRoutes.ts';
-import {translateComplaintController} from './src/controllers/translateController.ts';
-import {createOtpChallenge, getUserFromSession, registerUser, requestPasswordReset, resetPasswordWithOtp, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
+import { startFollowUpCron } from './src/cron/followUpCron.js';
+import { initComplaintsTable } from './src/db/mysql.js';
+import complaintRoutes from './src/routes/complaintRoutes.js';
+import {createOtpChallenge, getUserFromSession, registerUser, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
 import {getFormSuggestions} from './src/server/form-suggestions.ts';
 import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.ts';
-import {sendOtpEmail, sendOtpSms} from './src/server/otp-mailer.ts';
-import {updateFollowUpStatuses} from './src/services/complaintService.ts';
+import {sendOtpEmail} from './src/server/otp-mailer.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, 'dist');
-const hasBuiltClient = existsSync(path.join(distPath, 'index.html'));
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const hasBuiltClient = isProduction && existsSync(path.join(distPath, 'index.html'));
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
-const MAX_PORT_ATTEMPTS = 10;
+const MAX_PORT_RETRIES = 10;
 
-function listenOnAvailablePort(app: express.Express, preferredPort: number, host: string, attemptsLeft = MAX_PORT_ATTEMPTS): Promise<number> {
+function listenWithFallback(app: express.Express, host: string, startPort: number): Promise<number> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(preferredPort, host);
+    let attempts = 0;
+    let currentPort = startPort;
 
-    server.once('listening', () => {
-      resolve(preferredPort);
-    });
+    const tryListen = () => {
+      const server = app.listen(currentPort, host, () => {
+        const address = server.address() as AddressInfo | null;
+        resolve(address?.port ?? currentPort);
+      });
 
-    server.once('error', (error: NodeJS.ErrnoException) => {
-      server.close();
+      server.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE' && attempts < MAX_PORT_RETRIES) {
+          attempts += 1;
+          currentPort += 1;
+          console.warn(`Port ${currentPort - 1} is busy, retrying on ${currentPort}...`);
+          tryListen();
+          return;
+        }
 
-      if (error.code === 'EADDRINUSE' && attemptsLeft > 1) {
-        listenOnAvailablePort(app, preferredPort + 1, host, attemptsLeft - 1).then(resolve).catch(reject);
-        return;
-      }
+        reject(error);
+      });
+    };
 
-      reject(error);
-    });
+    tryListen();
   });
 }
 
@@ -49,22 +57,12 @@ async function startServer() {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({limit: '32kb'}));
+  await initComplaintsTable();
+  startFollowUpCron();
 
   app.get('/api/health', (_req, res) => {
     res.json({status: 'ok'});
   });
-
-  app.get('/api/public-config', (_req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(200).json({
-      whatsappNumber: process.env.WHATSAPP_PHONE_NUMBER || null,
-      welcomeMessage: process.env.WELCOME_MESSAGE || null,
-    });
-  });
-
-  app.post('/translate', translateComplaintController);
-  app.use('/get-guidance', guidanceRouter);
-  app.use('/api/complaints', complaintRouter);
 
   app.post('/api/auth/signup', async (req, res) => {
     try {
@@ -82,13 +80,10 @@ async function startServer() {
       const password = typeof req.body?.password === 'string' ? req.body.password : '';
       const user = await validateLogin(email, password);
       const challenge = await createOtpChallenge(email);
-      const delivery = await sendOtpSms(challenge.phoneNumber, challenge.otp, 'login');
-      if (!delivery.delivered) {
-        await sendOtpEmail(user.email, challenge.otp);
-      }
+      const delivery = await sendOtpEmail(user.email, challenge.otp);
       res.status(200).json({
         challengeId: challenge.challengeId,
-        message: delivery.delivered ? 'OTP sent to your phone number.' : 'OTP generated in demo mode.',
+        message: delivery.delivered ? 'OTP sent to your email address.' : 'OTP generated in demo mode.',
         demoOtp: 'demoOtp' in delivery ? delivery.demoOtp : undefined,
       });
     } catch (error) {
@@ -105,36 +100,6 @@ async function startServer() {
       res.status(200).json(session);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to verify OTP.';
-      res.status(400).json({error: message});
-    }
-  });
-
-  app.post('/api/auth/forgot-password', async (req, res) => {
-    try {
-      const phoneNumber = typeof req.body?.phoneNumber === 'string' ? req.body.phoneNumber : '';
-      const challenge = await requestPasswordReset(phoneNumber);
-      const delivery = await sendOtpSms(challenge.phoneNumber, challenge.otp, 'reset-password');
-      res.status(200).json({
-        challengeId: challenge.challengeId,
-        message: delivery.delivered ? 'Password reset OTP sent to your phone number.' : 'OTP generated in demo mode.',
-        demoOtp: 'demoOtp' in delivery ? delivery.demoOtp : undefined,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to start password reset.';
-      res.status(400).json({error: message});
-    }
-  });
-
-  app.post('/api/auth/reset-password', async (req, res) => {
-    try {
-      const phoneNumber = typeof req.body?.phoneNumber === 'string' ? req.body.phoneNumber : '';
-      const challengeId = typeof req.body?.challengeId === 'string' ? req.body.challengeId : '';
-      const otp = typeof req.body?.otp === 'string' ? req.body.otp : '';
-      const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
-      await resetPasswordWithOtp(phoneNumber, challengeId, otp, newPassword);
-      res.status(200).json({success: true});
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to reset password.';
       res.status(400).json({error: message});
     }
   });
@@ -174,6 +139,8 @@ async function startServer() {
     }
   });
 
+  app.use('/api', complaintRoutes);
+
   if (!hasBuiltClient) {
     const vite = await createViteServer({
       server: {middlewareMode: true},
@@ -187,16 +154,8 @@ async function startServer() {
     });
   }
 
-  const runningPort = await listenOnAvailablePort(app, PORT, HOST);
-  const runFollowUpSweep = () => {
-    void updateFollowUpStatuses().catch((error) => {
-      console.error('Failed to update complaint follow-up statuses', error);
-    });
-  };
-
-  runFollowUpSweep();
-  setInterval(runFollowUpSweep, 60 * 60 * 1000);
-  console.log(`Server running on http://localhost:${runningPort}`);
+  const activePort = await listenWithFallback(app, HOST, PORT);
+  console.log(`Server running on http://localhost:${activePort}`);
 }
 
 startServer().catch((error) => {
