@@ -37,29 +37,44 @@ const schemaSql = `
   );
 `;
 
+type DbConfig = {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+  database: string;
+};
+
+function readDbConfig(): DbConfig | null {
+  const host = process.env.MYSQL_HOST || process.env.DB_HOST;
+  const user = process.env.MYSQL_USER || process.env.DB_USER;
+  const database = process.env.MYSQL_DATABASE || process.env.DB_NAME;
+  const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD;
+  const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306);
+
+  if (!host || !user || !database) {
+    return null;
+  }
+
+  return { host, port, user, password, database };
+}
+
 export function getMySqlPool() {
   if (pool) {
     return pool;
   }
 
-  const {
-    MYSQL_HOST,
-    MYSQL_PORT,
-    MYSQL_USER,
-    MYSQL_PASSWORD,
-    MYSQL_DATABASE,
-  } = process.env;
-
-  if (!MYSQL_HOST || !MYSQL_USER || !MYSQL_DATABASE) {
+  const db = readDbConfig();
+  if (!db) {
     return null;
   }
 
   pool = mysql.createPool({
-    host: MYSQL_HOST,
-    port: MYSQL_PORT ? Number(MYSQL_PORT) : 3306,
-    user: MYSQL_USER,
-    password: MYSQL_PASSWORD,
-    database: MYSQL_DATABASE,
+    host: db.host,
+    port: db.port,
+    user: db.user,
+    password: db.password,
+    database: db.database,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -72,37 +87,30 @@ export function getMySqlPool() {
 export async function ensureMySqlSchema() {
   if (!schemaReady) {
     schemaReady = (async () => {
-      const {
-        MYSQL_HOST,
-        MYSQL_PORT,
-        MYSQL_USER,
-        MYSQL_PASSWORD,
-        MYSQL_DATABASE,
-      } = process.env;
-
+      const db = readDbConfig();
       const activePool = getMySqlPool();
-      if (!activePool || !MYSQL_HOST || !MYSQL_USER || !MYSQL_DATABASE) {
+      if (!activePool || !db) {
         return;
       }
 
       try {
         await activePool.query(schemaSql);
       } catch (error) {
-        const mysqlError = error as {code?: string};
+        const mysqlError = error as { code?: string };
         if (mysqlError.code !== 'ER_BAD_DB_ERROR') {
           throw error;
         }
 
         const bootstrap = await mysql.createConnection({
-          host: MYSQL_HOST,
-          port: MYSQL_PORT ? Number(MYSQL_PORT) : 3306,
-          user: MYSQL_USER,
-          password: MYSQL_PASSWORD,
+          host: db.host,
+          port: db.port,
+          user: db.user,
+          password: db.password,
           multipleStatements: true,
         });
 
         try {
-          await bootstrap.query(`CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\``);
+          await bootstrap.query(`CREATE DATABASE IF NOT EXISTS \`${db.database}\``);
         } finally {
           await bootstrap.end();
         }

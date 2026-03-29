@@ -53,7 +53,7 @@ async function ensureComplaintTable() {
   await ensureMySqlSchema();
   const pool = getMySqlPool();
   if (!pool) {
-    throw new Error('MySQL is not configured. Please set MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, and MYSQL_DATABASE.');
+    throw new Error('MySQL is not configured. Please set MYSQL_* or DB_* database environment variables.');
   }
 
   await pool.query(complaintsSchema);
