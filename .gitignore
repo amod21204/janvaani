@@ -5,5 +5,7 @@ coverage/
 .DS_Store
 *.log
 data/
+!src/data/
+!src/data/*.ts
 .env*
 !.env.example
