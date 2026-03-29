@@ -89,6 +89,11 @@ Prerequisites: Node.js 20+, MySQL 8+
 5. Open:
    `http://localhost:3000`
 
+For production or Render-style startup after build:
+
+- `npm run build`
+- `npm start`
+
 ## User Flow
 
 1. Enter a complaint or use `Voice Input`
@@ -116,6 +121,7 @@ Prerequisites: Node.js 20+, MySQL 8+
 - AI calls use Gemini when `GEMINI_API_KEY` is present, otherwise OpenAI when `OPENAI_API_KEY` is present; safe fallback text is used if neither is configured.
 - Cron updates complaints older than 3 days from `pending` to `follow-up required`.
 - Recent UI structure is preserved. The new features are layered into the existing complaint flow and dashboard.
+- Production startup now uses plain `node server.js` instead of `tsx`, which is more stable on platforms like Render.
 
 ## Backend Docker Quick Start (Windows)
 

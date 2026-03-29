@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "build": "tsc --noEmit && vite build --configLoader runner",
     "preview": "vite preview --configLoader runner",
-    "start": "tsx server.ts",
+    "start": "node server.js",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit"
   },

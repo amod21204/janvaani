@@ -1,0 +1,137 @@
+import 'dotenv/config';
+
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import { startFollowUpCron } from './src/cron/followUpCron.js';
+import { initComplaintsTable } from './src/db/mysql.js';
+import complaintRoutes from './src/routes/complaintRoutes.js';
+import {
+  createOtpChallenge,
+  getUserFromSession,
+  registerUser,
+  validateLogin,
+  verifyOtpChallenge,
+} from './src/server/auth-store.js';
+import { getFormSuggestions } from './src/server/form-suggestions.js';
+import { generateLegalDocument, validatePrompt } from './src/server/legal-generator.js';
+import { sendOtpEmail } from './src/server/otp-mailer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, 'dist');
+
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+
+async function startServer() {
+  const app = express();
+  app.disable('x-powered-by');
+  app.use(express.json({ limit: '32kb' }));
+
+  try {
+    await initComplaintsTable();
+    startFollowUpCron();
+  } catch (error) {
+    console.error('Database init skipped during startup', error);
+  }
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  app.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  app.post('/api/auth/signup', async (req, res) => {
+    try {
+      const user = await registerUser(req.body);
+      res.status(201).json({ user });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to create account.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const email = typeof req.body?.email === 'string' ? req.body.email : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const user = await validateLogin(email, password);
+      const challenge = await createOtpChallenge(email);
+      const delivery = await sendOtpEmail(user.email, challenge.otp);
+      res.status(200).json({
+        challengeId: challenge.challengeId,
+        message: delivery.delivered ? 'OTP sent to your email address.' : 'OTP generated in demo mode.',
+        demoOtp: 'demoOtp' in delivery ? delivery.demoOtp : undefined,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to login.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+      const challengeId = typeof req.body?.challengeId === 'string' ? req.body.challengeId : '';
+      const otp = typeof req.body?.otp === 'string' ? req.body.otp : '';
+      const session = await verifyOtpChallenge(challengeId, otp);
+      res.status(200).json(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to verify OTP.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.get('/api/auth/session', async (req, res) => {
+    const authorization = req.headers.authorization ?? '';
+    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    const user = token ? await getUserFromSession(token) : null;
+
+    if (!user) {
+      res.status(401).json({ error: 'Session not found.' });
+      return;
+    }
+
+    res.status(200).json({ user });
+  });
+
+  app.post('/api/generate', async (req, res) => {
+    let prompt;
+    try {
+      prompt = validatePrompt(req.body?.prompt);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid request.';
+      res.status(400).json({ error: message });
+      return;
+    }
+
+    try {
+      const document = await generateLegalDocument(prompt);
+      const suggestions = getFormSuggestions(prompt);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ document, suggestions });
+    } catch (error) {
+      console.error('Failed to generate legal document', error);
+      const message = error instanceof Error ? error.message : 'Failed to generate document. Please try again.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.use('/api', complaintRoutes);
+  app.use(express.static(distPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error('Failed to start server', error);
+  process.exit(1);
+});
