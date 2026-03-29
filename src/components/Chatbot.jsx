@@ -189,7 +189,7 @@ export default function Chatbot({onStartComplaint}) {
           aria-label={isOpen ? 'Close chat' : 'Open chat'}
         >
           {isOpen ? <X className="h-6 w-6" /> : <MessageCircleMore className="h-6 w-6" />}
-          {!isOpen && unreadCount > 0 ? <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#ff4a4a]" /> : null}
+          {!isOpen && unreadCount > 0 ? <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#ef4444]" /> : null}
         </button>
       </div>
 
@@ -210,8 +210,8 @@ export default function Chatbot({onStartComplaint}) {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#111827]">JAN-VAANI Assistant</p>
-                    <p className="flex items-center gap-1 text-xs text-[#4c7f42]">
-                      <span className="h-2 w-2 rounded-full bg-[#44d13d]" />
+                    <p className="flex items-center gap-1 text-xs text-[#2563EB]">
+                      <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
                       Online
                     </p>
                   </div>
@@ -268,4 +268,5 @@ export default function Chatbot({onStartComplaint}) {
     </>
   );
 }
+
 

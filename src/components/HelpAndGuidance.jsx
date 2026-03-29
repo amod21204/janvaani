@@ -67,7 +67,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
         <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#111827]">Get Help & Guided Assistance</h2>
         <p className="mt-2 text-sm text-[#475569]">Switch between helpline calling and guided legal writing in one flow.</p>
 
-        <div className="mt-4 flex rounded-2xl border border-[#e6d9cc] bg-white/90 p-1">
+        <div className="mt-4 flex rounded-2xl border border-[#dbe4f0] bg-white/90 p-1">
           <button
             onClick={() => setActiveTab('helpline')}
             className={cn('flex-1 rounded-2xl px-4 py-2 text-sm font-semibold transition', activeTab === 'helpline' ? 'bg-[#2563EB] text-white' : 'text-[#475569]')}
@@ -86,7 +86,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
       </div>
 
       <div className="p-5 sm:p-6">
-        <div className="mb-5 rounded-2xl border border-[#eadfce] bg-[#faf5ef] p-4">
+        <div className="mb-5 rounded-2xl border border-[#dbe4f0] bg-[#f8fbff] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Not sure what to do?</p>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <input
@@ -95,7 +95,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
               placeholder="Describe your issue briefly..."
               className="w-full rounded-xl border border-[#dacfc4] bg-white px-4 py-2 text-sm outline-none"
             />
-            <div className="rounded-xl border border-[#e5d8ca] bg-white px-4 py-2 text-sm font-semibold text-[#334155]">
+            <div className="rounded-xl border border-[#dbe4f0] bg-white px-4 py-2 text-sm font-semibold text-[#334155]">
               Suggested: {recommendation ?? 'Type your issue'}
             </div>
           </div>
@@ -107,11 +107,11 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
             <p className="text-sm text-[#475569]">Call directly or push a category into complaint drafting.</p>
 
             {Object.entries(helplineGroups).map(([category, entries]) => (
-              <div key={category} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+              <div key={category} className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">{category}</p>
                 <div className="mt-3 space-y-3">
                   {entries.map((entry) => (
-                    <div key={entry.title} className="rounded-2xl border border-[#efe2d4] bg-[#faf6f1] p-3">
+                    <div key={entry.title} className="rounded-2xl border border-[#e5edff] bg-[#f8fbff] p-3">
                       <p className="text-sm font-bold text-[#2d241d]">{entry.title}</p>
                       <p className="mt-1 text-xs leading-relaxed text-[#7b6657]">{entry.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+            <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
               <h3 className="text-base font-bold text-[#111827]">Guided Draft Setup</h3>
               <p className="mt-1 text-sm text-[#475569]">Choose a document type, start with a prompt, and continue in the legal drafting workspace below.</p>
 
@@ -178,7 +178,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
                         key={suggestion}
                         type="button"
                         onClick={() => setStarterQuery(suggestion)}
-                        className="rounded-full border border-[#dfd2c5] bg-white px-3 py-1 text-xs font-semibold text-[#475569]"
+                        className="rounded-full border border-[#cbd5e1] bg-white px-3 py-1 text-xs font-semibold text-[#475569]"
                       >
                         {suggestion}
                       </button>
@@ -188,7 +188,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
               </div>
 
               {relatedHelplines.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-[#ecd7c6] bg-[#fff5ec] p-3">
+                <div className="mt-4 rounded-xl border border-[#dbeafe] bg-[#eff6ff] p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E40AF]">Suggested Helplines</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {relatedHelplines.map((entry) => (
@@ -196,7 +196,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
                         key={entry.title}
                         type="button"
                         onClick={() => onHelplinePrefill?.(entry.title)}
-                        className="rounded-full border border-[#dfc7b3] bg-white px-3 py-1 text-xs font-semibold text-[#1E40AF]"
+                        className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1E40AF]"
                       >
                         {entry.title}: {entry.numbers.join(' / ')}
                       </button>
@@ -222,4 +222,5 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
     </section>
   );
 }
+
 

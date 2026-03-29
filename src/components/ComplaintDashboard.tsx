@@ -56,8 +56,8 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
               ['Total Complaints', dashboard.totalComplaints, 'bg-[#eff6ff] text-[#1E40AF]'],
-              ['Pending', dashboard.pendingComplaints, 'bg-[#fef5e7] text-[#1E3A8A]'],
-              ['Follow-up Required', dashboard.followUpRequiredComplaints, 'bg-[#fff3e8] text-[#1E40AF]'],
+              ['Pending', dashboard.pendingComplaints, 'bg-[#e5edff] text-[#1E40AF]'],
+              ['Follow-up Required', dashboard.followUpRequiredComplaints, 'bg-[#dbeafe] text-[#1E40AF]'],
               ['Resolved', dashboard.resolvedComplaints, 'bg-[#edf7ff] text-[#175985]'],
             ].map(([label, value, tone]) => (
               <div key={String(label)} className={`rounded-3xl border border-[#dbe4f0] p-5 ${tone}`}>
@@ -78,7 +78,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
                       {
                         label: 'Complaints',
                         data: categoryValues,
-                        backgroundColor: ['#2563EB', '#60a5fa', '#f59e0b', '#ef4444', '#8b5cf6'],
+                        backgroundColor: ['#2563EB', '#60a5fa', '#3b82f6', '#93c5fd', '#60a5fa'],
                         borderRadius: 10,
                       },
                     ],
@@ -100,7 +100,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
                     datasets: [
                       {
                         data: [dashboard.pendingComplaints, dashboard.followUpRequiredComplaints, dashboard.resolvedComplaints],
-                        backgroundColor: ['#f59e0b', '#fb923c', '#2563EB'],
+                        backgroundColor: ['#3b82f6', '#1e40af', '#2563EB'],
                       },
                     ],
                   }}
@@ -143,4 +143,5 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
     </div>
   );
 }
+
 

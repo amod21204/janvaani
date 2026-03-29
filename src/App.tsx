@@ -586,15 +586,15 @@ export default function App() {
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-3xl border border-[#dbe4f0] bg-white/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Drafting</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Drafting</p>
                 <p className="mt-2 text-lg font-bold text-[#111827]">RTI + Complaints</p>
               </div>
               <div className="rounded-3xl border border-[#dbe4f0] bg-white/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Citizen Profile</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Citizen Profile</p>
                 <p className="mt-2 text-lg font-bold text-[#111827]">Name to address</p>
               </div>
               <div className="rounded-3xl border border-[#dbe4f0] bg-white/90 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9b7a64]">Support</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Support</p>
                 <p className="mt-2 text-lg font-bold text-[#111827]">Forms + Helplines</p>
               </div>
             </div>
@@ -624,14 +624,14 @@ export default function App() {
               )}
             </div>
 
-            <div className="mt-8 rounded-[28px] border border-[#dbe4f0] bg-[#fffdfa] p-6">
+            <div className="mt-8 rounded-[28px] border border-[#dbe4f0] bg-[#ffffff] p-6">
               <div className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-[#2563EB]" />
                 <h2 className="text-lg font-bold text-[#111827]">Quick Toll-Free Numbers</h2>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {HELPLINE_ENTRIES.slice(0, 6).map((entry) => (
-                  <div key={`${entry.category}-${entry.title}`} className="rounded-2xl border border-[#efe2d4] bg-[#f8fbff] p-4">
+                  <div key={`${entry.category}-${entry.title}`} className="rounded-2xl border border-[#e5edff] bg-[#f8fbff] p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">{entry.category}</p>
                     <p className="mt-1 text-sm font-bold text-[#111827]">{entry.title}</p>
                     <p className="mt-2 text-base font-bold text-[#2563EB]">{entry.numbers.join(' / ')}</p>
@@ -672,7 +672,7 @@ export default function App() {
                 {resetChallenge && (
                   <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fbff] p-4">
                     <p className="text-sm font-semibold text-[#1f2937]">Password Reset Verification</p>
-                    <p className="mt-1 text-sm text-[#6f5a4a]">{resetChallenge.message}</p>
+                    <p className="mt-1 text-sm text-[#475569]">{resetChallenge.message}</p>
                     {resetChallenge.demoOtp && (
                       <p className="mt-2 text-sm font-bold text-[#2563EB]">Demo OTP: {resetChallenge.demoOtp}</p>
                     )}
@@ -750,7 +750,7 @@ export default function App() {
                 {otpState && (
                   <div className="rounded-2xl border border-[#dbe4f0] bg-[#f8fbff] p-4">
                     <p className="text-sm font-semibold text-[#1f2937]">OTP Verification</p>
-                    <p className="mt-1 text-sm text-[#6f5a4a]">{otpState.message}</p>
+                    <p className="mt-1 text-sm text-[#475569]">{otpState.message}</p>
                     {otpState.demoOtp && (
                       <p className="mt-2 text-sm font-bold text-[#2563EB]">Demo OTP: {otpState.demoOtp}</p>
                     )}
@@ -832,8 +832,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8f4ef_0%,#f4f1ea_48%,#efe7da_100%)] text-[#111827]">
-      <header className="border-b border-[#cbd5e1] bg-[#fbf7f1]/90 px-4 py-4 sm:px-6">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f3f4f6_48%,#e5edff_100%)] text-[#111827]">
+      <header className="border-b border-[#cbd5e1] bg-[#f8fbff]/90 px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-[#1E40AF] p-2.5 text-white">
@@ -845,7 +845,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfd4c8] bg-white px-4 py-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#dbe4f0] bg-white px-4 py-3">
               <div className="rounded-xl bg-[#dbeafe] p-2 text-[#1E40AF]">
                 <UserRound className="h-4 w-4" />
               </div>
@@ -858,10 +858,10 @@ export default function App() {
               <Languages className="h-3.5 w-3.5" />
               <span>{workspaceMode === 'guidance' ? 'Guidance + Translation + PDF' : 'Profile + Forms + Helplines'}</span>
             </div>
-            <button onClick={handleWorkspaceReset} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
+            <button onClick={handleWorkspaceReset} className="rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
               <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" />{workspaceMode === 'guidance' ? 'Clear Guidance' : 'Reset'}</span>
             </button>
-            <button onClick={handleLogout} className="rounded-xl border border-[#dfd4c8] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
+            <button onClick={handleLogout} className="rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
               <span className="flex items-center gap-2"><LogOut className="h-4 w-4" />Logout</span>
             </button>
           </div>
@@ -871,7 +871,7 @@ export default function App() {
       <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[390px,minmax(0,1fr)]">
         <aside className="space-y-6">
           <section className="overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
-            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
+            <div className="border-b border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] px-5 py-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><ShieldCheck className="h-5 w-5" /></div>
                 <div>
@@ -881,18 +881,18 @@ export default function App() {
               </div>
             </div>
             <div className="grid gap-3 p-5 text-sm">
-              <div className="rounded-2xl border border-[#dbe4f0] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Name</p><p className="mt-1 font-bold text-[#111827]">{currentUser.fullName}</p></div>
-              <div className="rounded-2xl border border-[#dbe4f0] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Occupation</p><p className="mt-1 font-bold text-[#111827]">{currentUser.occupation}</p></div>
+              <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Name</p><p className="mt-1 font-bold text-[#111827]">{currentUser.fullName}</p></div>
+              <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Occupation</p><p className="mt-1 font-bold text-[#111827]">{currentUser.occupation}</p></div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-[#dbe4f0] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Age</p><p className="mt-1 font-bold text-[#111827]">{currentUser.age}</p></div>
-                <div className="rounded-2xl border border-[#dbe4f0] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Phone</p><p className="mt-1 font-bold text-[#111827]">{currentUser.phoneNumber}</p></div>
+                <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Age</p><p className="mt-1 font-bold text-[#111827]">{currentUser.age}</p></div>
+                <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Phone</p><p className="mt-1 font-bold text-[#111827]">{currentUser.phoneNumber}</p></div>
               </div>
-              <div className="rounded-2xl border border-[#dbe4f0] bg-[#fffdfa] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Address</p><p className="mt-1 font-bold text-[#111827]">{currentUser.address}</p></div>
+              <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] px-4 py-3"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Address</p><p className="mt-1 font-bold text-[#111827]">{currentUser.address}</p></div>
             </div>
           </section>
 
           <section className="overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
-            <div className="border-b border-[#ece2d6] bg-[linear-gradient(135deg,#fdf5eb_0%,#fffaf4_100%)] px-5 py-5">
+            <div className="border-b border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] px-5 py-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><FileText className="h-5 w-5" /></div>
                 <div>
@@ -918,7 +918,7 @@ export default function App() {
                       }
                     }}
                     placeholder="Type your complaint..."
-                    className="min-h-[120px] w-full rounded-[20px] border border-[#dacfc4] bg-[#ffffff] px-5 py-4 pr-16 text-sm shadow-sm outline-none"
+                    className="min-h-[120px] w-full rounded-[20px] border border-[#cbd5e1] bg-[#ffffff] px-5 py-4 pr-16 text-sm shadow-sm outline-none"
                     rows={4}
                   />
                   <button onClick={() => void handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-3 right-3 rounded-2xl bg-[#2563EB] p-3 text-white disabled:opacity-50" type="button">
@@ -934,16 +934,16 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" />{improvingComplaint ? 'Improving...' : 'Improve Complaint'}</span>
                   </button>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#cbd5e1] bg-white px-4 py-3 text-sm font-semibold text-[#4b3b31]">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[#cbd5e1] bg-white px-4 py-3 text-sm font-semibold text-[#334155]">
                     <FileText className="h-4 w-4" />
                     Upload Evidence
                     <input type="file" accept="image/*,audio/*" className="hidden" multiple onChange={(event) => void handleEvidenceFiles(event.target.files)} />
                   </label>
                 </div>
                 {!!evidenceItems.length && (
-                  <div className="mt-4 rounded-2xl border border-[#d8e7d8] bg-[#f5fbf6] p-4">
+                  <div className="mt-4 rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E40AF]">Evidence Builder</p>
-                    <div className="mt-3 space-y-2 text-sm text-[#34503a]">
+                    <div className="mt-3 space-y-2 text-sm text-[#1f2937]">
                       {evidenceItems.map((item, index) => (
                         <div key={`${item.label}-${index}`} className="rounded-xl bg-white px-3 py-2">
                           <span className="font-semibold">{item.label}:</span> {item.detail}
@@ -965,27 +965,27 @@ export default function App() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2563EB]">{complaintRecord.category}</span>
                     <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#1E40AF]">{complaintRecord.department}</span>
-                    <span className={cn('rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]', complaintRecord.status === 'resolved' ? 'bg-[#eaf7ee] text-[#2563EB]' : complaintRecord.status === 'follow-up required' ? 'bg-[#fff4e8] text-[#b45309]' : 'bg-[#f4f4f5] text-[#5b5b63]')}>
+                    <span className={cn('rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]', complaintRecord.status === 'resolved' ? 'bg-[#eff6ff] text-[#2563EB]' : complaintRecord.status === 'follow-up required' ? 'bg-[#e5edff] text-[#1E40AF]' : 'bg-[#eff6ff] text-[#475569]')}>
                       {complaintRecord.status}
                     </span>
                   </div>
                 )}
-                <p className="mt-3 text-sm font-semibold text-[#49614d]">{complaintRecord ? `This will be sent to: ${complaintRecord.department}` : complaintPreview?.explanation ?? ''}</p>
+                <p className="mt-3 text-sm font-semibold text-[#334155]">{complaintRecord ? `This will be sent to: ${complaintRecord.department}` : complaintPreview?.explanation ?? ''}</p>
                 <p id="complaintText">{complaintRecord?.text_improved ?? complaintPreview?.content ?? ''}</p>
                 {complaintRecord?.evidence_text && (
-                  <div className="mt-4 rounded-2xl border border-[#d8e7d8] bg-[#f5fbf6] p-4">
+                  <div className="mt-4 rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1E40AF]">Evidence Section</p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-[#34503a]">{complaintRecord.evidence_text}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-[#1f2937]">{complaintRecord.evidence_text}</p>
                   </div>
                 )}
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <button id="editBtn" onClick={handleStartComplaint} className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#4b3b31]" type="button">
+                  <button id="editBtn" onClick={handleStartComplaint} className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]" type="button">
                     Edit
                   </button>
                   <button
                     id="downloadBtn"
                     onClick={() => void (complaintPreview ? downloadDocument(complaintPreview) : Promise.resolve())}
-                    className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#4b3b31]"
+                    className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]"
                     type="button"
                   >
                     Download PDF
@@ -1008,7 +1008,7 @@ export default function App() {
         </aside>
 
         <HelpAndGuidance helplineGroups={helplineGroups} onHelplinePrefill={handleHelplinePrefill} onGuidedStart={handleGuidedStart}>
-          <div className="border-b border-[#ece2d6] bg-[radial-gradient(circle_at_top_left,#eaf2ff_0%,#f8fbff_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
+          <div className="border-b border-[#dbe4f0] bg-[radial-gradient(circle_at_top_left,#eaf2ff_0%,#f8fbff_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#1E40AF]">{workspaceMode === 'guidance' ? 'Civic Guidance Assistant' : 'Drafting Studio'}</p>
@@ -1051,7 +1051,7 @@ export default function App() {
             {workspaceMode === 'drafting' ? (
               <>
                 <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto pr-1">
-              <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
+              <div className="rounded-3xl border border-[#dbe4f0] bg-[#f8fbff] p-5">
                 <div className="flex items-start gap-3">
                   <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><Info className="h-5 w-5" /></div>
                   <div>
@@ -1082,7 +1082,7 @@ export default function App() {
                     animate={{opacity: 1, y: 0}}
                     className={cn('flex flex-col max-w-[92%] sm:max-w-[78%]', msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start')}
                   >
-                    <div className={cn('rounded-3xl px-5 py-4 shadow-sm', msg.role === 'user' ? 'rounded-tr-md bg-[#2563EB] text-white' : 'rounded-tl-md border border-[#dbe4f0] bg-[#fffdfa] text-[#111827]')}>
+                    <div className={cn('rounded-3xl px-5 py-4 shadow-sm', msg.role === 'user' ? 'rounded-tr-md bg-[#2563EB] text-white' : 'rounded-tl-md border border-[#dbe4f0] bg-[#ffffff] text-[#111827]')}>
                       <p className="text-sm leading-relaxed sm:text-base">{msg.text}</p>
                     </div>
 
@@ -1094,7 +1094,7 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between border-b border-[#eee3d7] bg-[#eff6ff] px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-[#b34f21]" />
+                            <FileText className="h-4 w-4 text-[#1E40AF]" />
                             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#475569]">{msg.document.type}</span>
                           </div>
                           <div className="flex items-center gap-4">
@@ -1127,7 +1127,7 @@ export default function App() {
                               <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">{suggestion.category}</p>
                                 <p className="mt-1 text-sm font-bold text-[#111827]">{suggestion.subject}</p>
-                                <p className="mt-1 text-xs text-[#7a6556]">
+                                <p className="mt-1 text-xs text-[#64748b]">
                                   {suggestion.size} • {suggestion.format.toUpperCase()}
                                   {suggestion.note ? ` • ${suggestion.note}` : ''}
                                 </p>
@@ -1153,7 +1153,7 @@ export default function App() {
               {error && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{error}</motion.div>}
             </div>
 
-                <div className="mt-5 border-t border-[#ece2d6] pt-5">
+                <div className="mt-5 border-t border-[#dbe4f0] pt-5">
                   <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#64748b]">
                     <span className="flex items-center gap-1"><Info className="h-3 w-3" /> AI Generated Drafts</span>
                     <span className="flex items-center gap-1"><Scale className="h-3 w-3" /> Verify before official submission</span>
@@ -1163,7 +1163,7 @@ export default function App() {
             ) : workspaceMode === 'guidance' ? (
               <div className="flex-1 overflow-y-auto pr-1">
                 <div className="space-y-6">
-                  <div className="rounded-3xl border border-[#efe4d9] bg-[#faf7f2] p-5">
+                  <div className="rounded-3xl border border-[#dbe4f0] bg-[#f8fbff] p-5">
                     <div className="flex items-start gap-3">
                       <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><Info className="h-5 w-5" /></div>
                       <div>
@@ -1182,7 +1182,7 @@ export default function App() {
                           }
                         }}
                         placeholder="Example: How do I get a bonafide certificate?"
-                        className="min-h-[124px] w-full rounded-[28px] border border-[#dacfc4] bg-white px-5 py-4 text-sm shadow-sm outline-none"
+                        className="min-h-[124px] w-full rounded-[28px] border border-[#cbd5e1] bg-white px-5 py-4 text-sm shadow-sm outline-none"
                       />
                     </div>
                     <div className="mt-4 flex flex-wrap gap-3">
@@ -1275,5 +1275,7 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
