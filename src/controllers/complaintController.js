@@ -11,16 +11,24 @@ function badRequest(res, message) {
   return res.status(400).json({ error: message });
 }
 
+function requireUser(req, res) {
+  if (!req.user?.email) {
+    res.status(401).json({ error: 'Login required.' });
+    return null;
+  }
+
+  return req.user;
+}
+
 function buildImprovedComplaintFallback(text) {
   const locationMatch = text.match(/\b(?:near|at|in|on|around)\s+([a-z0-9 ,.-]+)/i);
   const location = locationMatch?.[1]?.trim() || 'Not clearly specified';
 
   return [
-    'Subject: Civic grievance requiring prompt attention',
-    '',
+    'Subject: Civic issue requiring attention',
     `Issue: ${text}`,
     `Location: ${location}`,
-    'Request: Kindly inspect the issue and take necessary action at the earliest.',
+    'Request: Kindly inspect the issue and resolve it at the earliest.',
   ].join('\n');
 }
 
@@ -31,7 +39,7 @@ function parseRoutingResponse(aiResult) {
       return normalizeRoutingResult(parsed);
     }
   } catch {
-    // Fall back to line parsing below.
+    // Fall back to text parsing below.
   }
 
   const categoryMatch = aiResult.match(/category\s*:\s*(.+)/i);
@@ -45,6 +53,11 @@ function parseRoutingResponse(aiResult) {
 
 export async function improveComplaint(req, res) {
   try {
+    const user = requireUser(req, res);
+    if (!user) {
+      return;
+    }
+
     const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
     if (!text) {
       return badRequest(res, 'Complaint text is required.');
@@ -53,8 +66,8 @@ export async function improveComplaint(req, res) {
     const fallback = buildImprovedComplaintFallback(text);
     const improved = await generateAiText(
       [
-        'Rewrite the following civic complaint in a formal, citizen-friendly format.',
-        'Return plain text with exactly these fields in order:',
+        'Rewrite the civic complaint in a formal, concise, professional tone.',
+        'Return plain text with these labels only:',
         'Subject:',
         'Issue:',
         'Location:',
@@ -64,10 +77,7 @@ export async function improveComplaint(req, res) {
       fallback,
     );
 
-    return res.json({
-      original_text: text,
-      improved_text: improved,
-    });
+    return res.json({ improved_text: improved });
   } catch (error) {
     console.error('improveComplaint failed', error);
     return res.status(500).json({ error: 'Failed to improve complaint.' });
@@ -76,6 +86,11 @@ export async function improveComplaint(req, res) {
 
 export async function classifyComplaint(req, res) {
   try {
+    const user = requireUser(req, res);
+    if (!user) {
+      return;
+    }
+
     const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
     if (!text) {
       return badRequest(res, 'Complaint text is required.');
@@ -89,8 +104,8 @@ export async function classifyComplaint(req, res) {
     const fallback = JSON.stringify(normalizeRoutingResult(null));
     const aiResult = await generateAiText(
       [
-        'Classify this civic complaint into the most suitable category and department.',
-        'Respond only as JSON with keys "category" and "department".',
+        'Classify this complaint and identify the correct civic department.',
+        'Return only JSON with keys "category" and "department".',
         `Complaint: ${text}`,
       ].join('\n'),
       fallback,
@@ -105,24 +120,28 @@ export async function classifyComplaint(req, res) {
 
 export async function buildEvidence(req, res) {
   try {
+    const user = requireUser(req, res);
+    if (!user) {
+      return;
+    }
+
     const voiceText = typeof req.body?.voiceText === 'string' ? req.body.voiceText.trim() : '';
     const complaintText = typeof req.body?.complaintText === 'string' ? req.body.complaintText.trim() : '';
     const imageFile = req.file;
 
     const evidenceParts = [];
-    let imageSummary = '';
     if (voiceText) {
       evidenceParts.push(`Voice transcript: ${voiceText}`);
     }
 
     if (imageFile?.originalname) {
-      const imageFallback = `Image evidence attached showing complaint context (${imageFile.originalname}).`;
-      imageSummary = await generateAiText(
+      const imageFallback = `Image evidence attached showing issue context (${imageFile.originalname}).`;
+      const imageSummary = await generateAiText(
         [
-          'Generate one short line describing the likely evidence attached to a civic complaint image.',
+          'Write one short evidence line for an uploaded complaint image.',
           'Keep it factual and under 20 words.',
-          complaintText ? `Complaint context: ${complaintText}` : '',
-          `Image filename: ${imageFile.originalname}`,
+          complaintText ? `Complaint: ${complaintText}` : '',
+          `Filename: ${imageFile.originalname}`,
         ]
           .filter(Boolean)
           .join('\n'),
@@ -132,13 +151,11 @@ export async function buildEvidence(req, res) {
     }
 
     if (evidenceParts.length === 0) {
-      evidenceParts.push('No additional evidence provided.');
+      evidenceParts.push('No additional evidence attached.');
     }
 
     return res.json({
       evidence_text: `Evidence Section:\n- ${evidenceParts.join('\n- ')}`,
-      voice_text: voiceText,
-      image_summary: imageSummary,
     });
   } catch (error) {
     console.error('buildEvidence failed', error);
@@ -148,32 +165,36 @@ export async function buildEvidence(req, res) {
 
 export async function createComplaintRecord(req, res) {
   try {
+    const user = requireUser(req, res);
+    if (!user) {
+      return;
+    }
+
     const originalText = typeof req.body?.text_original === 'string' ? req.body.text_original.trim() : '';
     const improvedText = typeof req.body?.text_improved === 'string' ? req.body.text_improved.trim() : '';
     const evidenceText = typeof req.body?.evidence_text === 'string' ? req.body.evidence_text.trim() : '';
-    const complaintTextForRouting = improvedText || originalText;
-    const derivedRouting = normalizeRoutingResult(classifyByKeyword(complaintTextForRouting));
+    const routing = normalizeRoutingResult(
+      classifyByKeyword(improvedText || originalText) || {
+        category: typeof req.body?.category === 'string' ? req.body.category.trim() : '',
+        department: typeof req.body?.department === 'string' ? req.body.department.trim() : '',
+      },
+    );
 
     const payload = {
+      user_name: user.name || 'Citizen',
+      user_email: user.email,
       text_original: originalText,
       text_improved: improvedText,
-      category: typeof req.body?.category === 'string' && req.body.category.trim() ? req.body.category.trim() : derivedRouting.category,
-      department:
-        typeof req.body?.department === 'string' && req.body.department.trim()
-          ? req.body.department.trim()
-          : derivedRouting.department,
+      category: routing.category,
+      department: routing.department,
       evidence_text: evidenceText,
-      status: typeof req.body?.status === 'string' ? req.body.status : 'pending',
-      latitude: req.body?.latitude ? Number(req.body.latitude) : null,
-      longitude: req.body?.longitude ? Number(req.body.longitude) : null,
+      status: 'pending',
+      latitude: null,
+      longitude: null,
     };
 
     if (!payload.text_original) {
       return badRequest(res, 'Original complaint text is required.');
-    }
-
-    if (payload.text_improved && evidenceText && !payload.text_improved.includes('Evidence Section:')) {
-      payload.text_improved = `${payload.text_improved}\n\n${evidenceText}`;
     }
 
     const created = await createComplaint(payload);
@@ -191,7 +212,12 @@ export async function createComplaintRecord(req, res) {
 
 export async function getComplaintStatusList(_req, res) {
   try {
-    const complaints = await getComplaintStatuses();
+    const user = requireUser(_req, res);
+    if (!user) {
+      return;
+    }
+
+    const complaints = await getComplaintStatuses(user.email);
     return res.json({ complaints });
   } catch (error) {
     console.error('getComplaintStatusList failed', error);
@@ -201,7 +227,12 @@ export async function getComplaintStatusList(_req, res) {
 
 export async function getDashboard(_req, res) {
   try {
-    const data = await getDashboardData();
+    const user = requireUser(_req, res);
+    if (!user) {
+      return;
+    }
+
+    const data = await getDashboardData(user.email);
     return res.json(data);
   } catch (error) {
     console.error('getDashboard failed', error);

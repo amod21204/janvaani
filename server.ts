@@ -10,10 +10,10 @@ import {createServer as createViteServer} from 'vite';
 import { startFollowUpCron } from './src/cron/followUpCron.js';
 import { initComplaintsTable } from './src/db/mysql.js';
 import complaintRoutes from './src/routes/complaintRoutes.js';
-import {createOtpChallenge, getUserFromSession, registerUser, validateLogin, verifyOtpChallenge} from './src/server/auth-store.ts';
-import {getFormSuggestions} from './src/server/form-suggestions.ts';
-import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.ts';
-import {sendOtpEmail} from './src/server/otp-mailer.ts';
+import {createOtpChallenge, getUserFromSession, registerUser, validateLogin, verifyOtpChallenge} from './src/server/auth-store.js';
+import {getFormSuggestions} from './src/server/form-suggestions.js';
+import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.js';
+import {sendOtpEmail} from './src/server/otp-mailer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,8 +57,16 @@ async function startServer() {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({limit: '32kb'}));
-  await initComplaintsTable();
-  startFollowUpCron();
+  try {
+    await initComplaintsTable();
+    startFollowUpCron();
+  } catch (error) {
+    console.error('Database init skipped during startup', error);
+  }
+
+  app.get('/health', (_req, res) => {
+    res.json({status: 'ok'});
+  });
 
   app.get('/api/health', (_req, res) => {
     res.json({status: 'ok'});

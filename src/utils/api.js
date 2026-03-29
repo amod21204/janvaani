@@ -6,3 +6,19 @@ export function apiUrl(path) {
 
   return `${base.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
 }
+
+export function getStoredToken() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return window.localStorage.getItem('janvaani_token') || '';
+}
+
+export function getAuthHeaders(extraHeaders = {}) {
+  const token = getStoredToken();
+  return {
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}

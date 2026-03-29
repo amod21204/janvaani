@@ -1,37 +1,33 @@
 import {
-  Bell,
   Bot,
-  ChartNoAxesCombined,
-  FileText,
   LayoutGrid,
   MessageSquareWarning,
   Search,
   ShieldCheck,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 import { cn } from '../../utils/cn';
+import { apiUrl, getAuthHeaders, getStoredToken } from '../../utils/api';
 
 const navItems = [
   { to: '/', label: 'Home', icon: LayoutGrid },
   { to: '/services', label: 'Services', icon: ShieldCheck },
   { to: '/assistant', label: 'Assistant', icon: Bot },
   { to: '/complaint', label: 'Complaints', icon: MessageSquareWarning },
-  { to: '/documents', label: 'Documents', icon: FileText },
-  { to: '/dashboard', label: 'Dashboard', icon: ChartNoAxesCombined },
 ];
 
 export default function AppShell({ children }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [user, setUser] = useState(null);
   const searchableItems = useMemo(
     () => [
       ...navItems,
       { to: '/services', label: 'Income Certificate', icon: ShieldCheck },
       { to: '/complaint', label: 'Police Complaint', icon: MessageSquareWarning },
-      { to: '/documents', label: 'Document Checklist', icon: FileText },
       { to: '/assistant', label: 'Voice Assistant', icon: Bot },
     ],
     [],
@@ -45,6 +41,32 @@ export default function AppShell({ children }) {
     return searchableItems.filter((item) => item.label.toLowerCase().includes(normalized)).slice(0, 5);
   }, [query, searchableItems]);
 
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
+    let ignore = false;
+    fetch(apiUrl('/api/auth/session'), { headers: getAuthHeaders() })
+      .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
+      .then(({ ok, payload }) => {
+        if (!ignore && ok) {
+          setUser(payload.user || null);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setUser(null);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   const onSearchSubmit = (event) => {
     event.preventDefault();
     if (filteredResults.length > 0) {
@@ -55,6 +77,12 @@ export default function AppShell({ children }) {
 
     navigate('/services');
     setShowResults(false);
+  };
+
+  const logout = () => {
+    window.localStorage.removeItem('janvaani_token');
+    setUser(null);
+    navigate('/login');
   };
 
   return (
@@ -84,14 +112,10 @@ export default function AppShell({ children }) {
           </nav>
 
           <div className="mt-auto rounded-[28px] bg-gradient-to-br from-sky-500 to-sky-700 p-5 text-white shadow-float">
-            <p className="font-display text-lg font-bold">Civic Pulse</p>
-            <p className="mt-2 text-sm text-white/80">
-              3 new state alerts and 2 smart nudges are ready for today.
+            <p className="font-display text-lg font-bold">Citizen Workspace</p>
+            <p className="mt-2 text-sm text-white/85">
+              Keep your most important civic tasks, complaints, and guided help in one place.
             </p>
-            <div className="mt-4 flex items-center gap-2 text-sm text-white/90">
-              <Bell size={16} />
-              Next bill reminder at 6:00 PM
-            </div>
           </div>
         </aside>
 
@@ -110,7 +134,7 @@ export default function AppShell({ children }) {
                   window.setTimeout(() => setShowResults(false), 120);
                 }}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search schemes, offices, certificates, and updates"
+                placeholder="Search services, complaints, and help"
                 className="w-full bg-transparent text-sm text-ink-700 outline-none placeholder:text-ink-600"
               />
               {showResults && filteredResults.length > 0 ? (
@@ -133,9 +157,23 @@ export default function AppShell({ children }) {
                 </div>
               ) : null}
             </form>
-            <button className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-ink-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50">
-              <Bell size={18} />
-            </button>
+            {user ? (
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-ink-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50"
+              >
+                Logout
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-ink-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50"
+              >
+                Login
+              </button>
+            )}
           </header>
 
           <main className="flex-1">{children}</main>
@@ -176,7 +214,7 @@ function BrandBlock() {
         </div>
       </div>
       <p className="mt-5 text-sm leading-6 text-white/85">
-        One premium civic workspace for services, reminders, documents, and guided help.
+        A focused civic workspace for services, complaints, and guided support.
       </p>
     </div>
   );

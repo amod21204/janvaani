@@ -2,6 +2,23 @@ import mysql from 'mysql2/promise';
 
 let pool;
 
+async function ensureColumn(db, columnName, definition) {
+  const [rows] = await db.query(
+    `
+      SELECT COUNT(*) AS count
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'complaints'
+        AND COLUMN_NAME = ?
+    `,
+    [columnName],
+  );
+
+  if (!rows[0]?.count) {
+    await db.execute(`ALTER TABLE complaints ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
 export async function getDbPool() {
   if (pool) {
     return pool;
@@ -26,6 +43,8 @@ export async function initComplaintsTable() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS complaints (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      user_name VARCHAR(120),
+      user_email VARCHAR(255),
       text_original TEXT,
       text_improved TEXT,
       category VARCHAR(120),
@@ -37,4 +56,7 @@ export async function initComplaintsTable() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await ensureColumn(db, 'user_name', 'VARCHAR(120) NULL');
+  await ensureColumn(db, 'user_email', 'VARCHAR(255) NULL');
 }
