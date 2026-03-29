@@ -1,9 +1,8 @@
 services:
   - type: web
-    name: janvaani-backend
+    name: janvaani
     env: node
-    rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /health
     plan: free
@@ -11,10 +10,14 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
+        value: 3000
       - key: HOST
         value: 0.0.0.0
-      - key: FRONTEND_ORIGIN
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: GEMINI_API_KEY
         sync: false
       - key: DB_HOST
         sync: false
