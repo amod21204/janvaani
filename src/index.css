@@ -2,7 +2,19 @@
 
 @layer base {
   body {
-    @apply bg-[#F3F4F6] text-[#111827];
+    @apply text-[#111827];
+  }
+
+  .app-shell input,
+  .app-shell textarea,
+  .app-shell select {
+    @apply rounded-xl border border-[#bfdbfe] bg-white/85 text-[#111827] outline-none transition;
+  }
+
+  .app-shell input:focus,
+  .app-shell textarea:focus,
+  .app-shell select:focus {
+    @apply border-[#2563EB] ring-4 ring-[#2563EB]/15;
   }
 
   .markdown-body {
@@ -39,19 +51,34 @@
 
 @layer components {
   .primary-btn {
-    @apply cursor-pointer rounded-xl border-0 bg-[#2563EB] px-5 py-3 text-base font-semibold text-white transition-all duration-200 hover:bg-[#1E40AF] hover:shadow-md;
+    @apply cursor-pointer rounded-xl px-5 py-3 text-base font-semibold text-white transition-all duration-200 hover:shadow-md;
+    background: rgba(37, 99, 235, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 24px rgba(30, 64, 175, 0.28);
   }
 
   .voice-card {
-    @apply rounded-2xl bg-white p-5 shadow-md;
+    @apply rounded-2xl p-5 shadow-md;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .complaint-section {
-    @apply mt-7 rounded-2xl bg-white p-5 shadow-md;
+    @apply mt-7 rounded-2xl p-5 shadow-md;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .complaint-box {
-    @apply mt-5 rounded-2xl bg-white p-5 shadow-md;
+    @apply mt-5 rounded-2xl p-5 shadow-md;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .hidden {

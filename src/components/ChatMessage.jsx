@@ -52,7 +52,7 @@ export default function ChatMessage({message, onSuggestionClick}) {
       <div className="max-w-[85%]">
         <div
           className={[
-            'rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
+            'glass-card rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
             isUser
               ? 'rounded-br-md bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white'
               : 'rounded-bl-md border border-white/40 bg-white/75 text-[#111827]',

@@ -10,7 +10,6 @@ import {
   FileText,
   Info,
   Languages,
-  Loader2,
   LogOut,
   Phone,
   Scale,
@@ -571,9 +570,9 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#eaf2ff_0%,#f3f4f6_42%,#e5edff_100%)] px-4 py-8 text-[#111827] sm:px-6">
+      <div className="app-shell app-fade-in min-h-screen bg-[radial-gradient(circle_at_top_left,#eaf2ff_0%,#f3f4f6_42%,#e5edff_100%)] px-4 py-8 text-[#111827] sm:px-6">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-          <section className="rounded-[32px] border border-[#dbe4f0] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-8 shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+          <section className="glass-panel app-slide-up rounded-[32px] border border-[#dbe4f0] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-8 shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
             <div className="flex items-center gap-3">
               <div className="rounded-3xl bg-[#1E40AF] p-3 text-white">
                 <Scale className="h-7 w-7" />
@@ -641,7 +640,7 @@ export default function App() {
             </div>
           </section>
 
-          <section className="rounded-[32px] border border-[#dbe4f0] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
+          <section className="glass-panel app-slide-up rounded-[32px] border border-[#dbe4f0] bg-white p-6 shadow-[0_28px_60px_rgba(71,49,27,0.08)] sm:p-8">
             <div className="flex rounded-2xl bg-[#eaf2ff] p-1">
               <button onClick={() => { setAuthMode('login'); setForgotPasswordMode(false); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'login' ? 'bg-white text-[#111827]' : 'text-[#64748b]')} type="button">Login</button>
               <button onClick={() => { setAuthMode('signup'); setForgotPasswordMode(false); setAuthError(null); }} className={cn('flex-1 rounded-2xl px-4 py-3 text-sm font-semibold', authMode === 'signup' ? 'bg-white text-[#111827]' : 'text-[#64748b]')} type="button">Sign Up</button>
@@ -832,8 +831,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f3f4f6_48%,#e5edff_100%)] text-[#111827]">
-      <header className="border-b border-[#cbd5e1] bg-[#f8fbff]/90 px-4 py-4 sm:px-6">
+    <div className="app-shell app-fade-in min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f3f4f6_48%,#e5edff_100%)] text-[#111827]">
+      <header className="glass-nav border-b border-[#cbd5e1] bg-[#f8fbff]/90 px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-[#1E40AF] p-2.5 text-white">
@@ -858,19 +857,19 @@ export default function App() {
               <Languages className="h-3.5 w-3.5" />
               <span>{workspaceMode === 'guidance' ? 'Guidance + Translation + PDF' : 'Profile + Forms + Helplines'}</span>
             </div>
-            <button onClick={handleWorkspaceReset} className="rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
+            <button onClick={handleWorkspaceReset} className="glass-card rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155] transition hover:scale-[1.02]" type="button">
               <span className="flex items-center gap-2"><Trash2 className="h-4 w-4" />{workspaceMode === 'guidance' ? 'Clear Guidance' : 'Reset'}</span>
             </button>
-            <button onClick={handleLogout} className="rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155]" type="button">
+            <button onClick={handleLogout} className="glass-card rounded-xl border border-[#dbe4f0] bg-white px-3 py-2 text-sm font-semibold text-[#334155] transition hover:scale-[1.02]" type="button">
               <span className="flex items-center gap-2"><LogOut className="h-4 w-4" />Logout</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[390px,minmax(0,1fr)]">
+      <main className="app-fade-in mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[390px,minmax(0,1fr)]">
         <aside className="space-y-6">
-          <section className="overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+          <section className="glass-panel card-hover overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
             <div className="border-b border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] px-5 py-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><ShieldCheck className="h-5 w-5" /></div>
@@ -891,7 +890,7 @@ export default function App() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+          <section className="glass-panel card-hover overflow-hidden rounded-[28px] border border-[#cbd5e1] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
             <div className="border-b border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] px-5 py-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-[#dbeafe] p-2 text-[#1E40AF]"><FileText className="h-5 w-5" /></div>
@@ -953,8 +952,8 @@ export default function App() {
                   </div>
                 )}
                 {isLoading && (
-                  <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#dbe4f0] bg-white px-4 py-3 text-sm text-[#64748b]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="glass-card mt-3 flex items-center gap-3 rounded-2xl border border-[#dbe4f0] bg-white px-4 py-3 text-sm text-[#64748b]">
+                    <span className="loader" aria-hidden="true" />
                     Generating complaint...
                   </div>
                 )}
@@ -979,13 +978,13 @@ export default function App() {
                   </div>
                 )}
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <button id="editBtn" onClick={handleStartComplaint} className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]" type="button">
+                  <button id="editBtn" onClick={handleStartComplaint} className="glass-card rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]" type="button">
                     Edit
                   </button>
                   <button
                     id="downloadBtn"
                     onClick={() => void (complaintPreview ? downloadDocument(complaintPreview) : Promise.resolve())}
-                    className="rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]"
+                    className="glass-card rounded-lg border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-[#334155]"
                     type="button"
                   >
                     Download PDF
@@ -1149,7 +1148,7 @@ export default function App() {
                 ))}
               </AnimatePresence>
 
-              {isLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 text-sm italic text-[#64748b]"><Loader2 className="h-4 w-4 animate-spin" />JAN-VAANI is drafting your document...</motion.div>}
+              {isLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="glass-card flex items-center gap-3 rounded-2xl border border-[#dbe4f0] px-4 py-3 text-sm italic text-[#64748b]"><span className="loader" aria-hidden="true" />JAN-VAANI is drafting your document...</motion.div>}
               {error && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{error}</motion.div>}
             </div>
 
@@ -1201,7 +1200,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {guidanceLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-[#dbe4f0] bg-white px-4 py-3 text-sm text-[#64748b]"><Loader2 className="h-4 w-4 animate-spin" />JAN-VAANI is preparing your civic guidance...</motion.div>}
+                  {guidanceLoading && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="glass-card flex items-center gap-3 rounded-2xl border border-[#dbe4f0] bg-white px-4 py-3 text-sm text-[#64748b]"><span className="loader" aria-hidden="true" />JAN-VAANI is preparing your civic guidance...</motion.div>}
                   {guidanceError && <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{guidanceError}</motion.div>}
 
                   {guidanceResult && (

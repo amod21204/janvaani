@@ -181,11 +181,11 @@ export default function Chatbot({onStartComplaint}) {
 
   return (
     <>
-      <div className="fixed bottom-5 right-5 z-[80]">
+      <div className="fixed bottom-5 right-5 z-[80] app-slide-up">
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-[0_16px_30px_rgba(0,95,198,0.38)] transition hover:scale-105"
+          className="btn-glass group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-[0_16px_30px_rgba(0,95,198,0.38)] transition hover:scale-105"
           aria-label={isOpen ? 'Close chat' : 'Open chat'}
         >
           {isOpen ? <X className="h-6 w-6" /> : <MessageCircleMore className="h-6 w-6" />}
@@ -202,7 +202,7 @@ export default function Chatbot({onStartComplaint}) {
             transition={{duration: 0.25}}
             className="fixed inset-0 z-[79] md:inset-auto md:bottom-24 md:right-5 md:h-[640px] md:w-[420px]"
           >
-            <div className="flex h-full flex-col border border-white/35 bg-[linear-gradient(150deg,rgba(240,247,255,0.75),rgba(239,246,255,0.86))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(32,54,86,0.24)]">
+            <div className="glass-panel flex h-full flex-col border border-white/35 bg-[linear-gradient(150deg,rgba(240,247,255,0.75),rgba(239,246,255,0.86))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(32,54,86,0.24)]">
               <header className="flex items-center justify-between border-b border-white/40 px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[#1264a3]">

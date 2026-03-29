@@ -171,8 +171,8 @@ export default function VoiceToText({
     <div
       className={
         compact
-          ? 'w-full rounded-2xl border border-[#eadfce] bg-[#faf6f1] p-3'
-          : 'w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm'
+          ? 'glass-card w-full rounded-2xl border border-[#eadfce] bg-[#faf6f1] p-3'
+          : 'glass-panel w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm'
       }
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -228,7 +228,7 @@ export default function VoiceToText({
           onClick={startRecording}
           disabled={!isSupported || isRecording}
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-glass inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Mic className="h-4 w-4" />
           Start Recording

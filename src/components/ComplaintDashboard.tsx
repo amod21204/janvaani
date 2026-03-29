@@ -37,18 +37,18 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 rounded-3xl border border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_100%)] p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+      <div className="glass-card card-hover flex flex-col gap-3 rounded-3xl border border-[#dbe4f0] bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_100%)] p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1E40AF]">Civic Dashboard</p>
           <h3 className="mt-2 text-2xl font-bold text-[#111827]">Complaint analytics and status tracking</h3>
           <p className="mt-2 text-sm text-[#475569]">Track total complaints, department categories, and follow-up risk in one place.</p>
         </div>
-        <button onClick={onRefresh} className="rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E40AF]" type="button">
+        <button onClick={onRefresh} className="btn-glass rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E40AF]" type="button">
           Refresh Dashboard
         </button>
       </div>
 
-      {loading && <div className="rounded-3xl border border-[#dbe4f0] bg-white px-5 py-4 text-sm text-[#475569]">Loading complaint dashboard...</div>}
+      {loading && <div className="glass-card rounded-3xl border border-[#dbe4f0] bg-white px-5 py-4 text-sm text-[#475569]"><div className="flex items-center gap-3"><span className="loader" aria-hidden="true" />Loading complaint dashboard...</div></div>}
       {error && <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">{error}</div>}
 
       {dashboard && (
@@ -60,7 +60,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
               ['Follow-up Required', dashboard.followUpRequiredComplaints, 'bg-[#dbeafe] text-[#1E40AF]'],
               ['Resolved', dashboard.resolvedComplaints, 'bg-[#edf7ff] text-[#175985]'],
             ].map(([label, value, tone]) => (
-              <div key={String(label)} className={`rounded-3xl border border-[#dbe4f0] p-5 ${tone}`}>
+              <div key={String(label)} className={`glass-card card-hover rounded-3xl border border-[#dbe4f0] p-5 ${tone}`}>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em]">{label}</p>
                 <p className="mt-3 text-3xl font-bold">{value}</p>
               </div>
@@ -68,7 +68,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1.3fr,0.9fr]">
-            <div className="rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
+            <div className="glass-card card-hover rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Complaints By Category</p>
               <div className="mt-4 h-[320px]">
                 <Bar
@@ -91,7 +91,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
+            <div className="glass-card card-hover rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Pending Vs Resolved</p>
               <div className="mt-4 h-[320px]">
                 <Doughnut
@@ -110,7 +110,7 @@ export default function ComplaintDashboard({dashboard, loading, error, onRefresh
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
+          <div className="glass-card card-hover rounded-3xl border border-[#dbe4f0] bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Recent Complaints</p>
             <div className="mt-4 space-y-4">
               {dashboard.recentComplaints.length ? (

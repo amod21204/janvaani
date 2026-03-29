@@ -61,7 +61,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
   }, [decisionQuery]);
 
   return (
-    <section className="overflow-hidden rounded-[32px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
+    <section className="glass-panel app-slide-up overflow-hidden rounded-[32px] border border-[#d8cfc4] bg-white shadow-[0_28px_60px_rgba(71,49,27,0.08)]">
       <div className="border-b border-[#ece2d6] bg-[radial-gradient(circle_at_top_left,#fff2e8_0%,#fffaf5_52%,#ffffff_100%)] px-5 py-5 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#1E40AF]">Unified Support</p>
         <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#111827]">Get Help & Guided Assistance</h2>
@@ -86,7 +86,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
       </div>
 
       <div className="p-5 sm:p-6">
-        <div className="mb-5 rounded-2xl border border-[#dbe4f0] bg-[#f8fbff] p-4">
+        <div className="glass-card mb-5 rounded-2xl border border-[#dbe4f0] bg-[#f8fbff] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Not sure what to do?</p>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <input
@@ -107,11 +107,11 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
             <p className="text-sm text-[#475569]">Call directly or push a category into complaint drafting.</p>
 
             {Object.entries(helplineGroups).map(([category, entries]) => (
-              <div key={category} className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
+              <div key={category} className="glass-card card-hover rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">{category}</p>
                 <div className="mt-3 space-y-3">
                   {entries.map((entry) => (
-                    <div key={entry.title} className="rounded-2xl border border-[#e5edff] bg-[#f8fbff] p-3">
+                    <div key={entry.title} className="glass-card card-hover rounded-2xl border border-[#e5edff] bg-[#f8fbff] p-3">
                       <p className="text-sm font-bold text-[#2d241d]">{entry.title}</p>
                       <p className="mt-1 text-xs leading-relaxed text-[#7b6657]">{entry.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
+            <div className="glass-card rounded-2xl border border-[#dbe4f0] bg-[#ffffff] p-4">
               <h3 className="text-base font-bold text-[#111827]">Guided Draft Setup</h3>
               <p className="mt-1 text-sm text-[#475569]">Choose a document type, start with a prompt, and continue in the legal drafting workspace below.</p>
 
@@ -178,7 +178,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
                         key={suggestion}
                         type="button"
                         onClick={() => setStarterQuery(suggestion)}
-                        className="rounded-full border border-[#cbd5e1] bg-white px-3 py-1 text-xs font-semibold text-[#475569]"
+                        className="glass-card rounded-full border border-[#cbd5e1] bg-white px-3 py-1 text-xs font-semibold text-[#475569] transition hover:scale-[1.03]"
                       >
                         {suggestion}
                       </button>
@@ -208,7 +208,7 @@ export default function HelpAndGuidance({helplineGroups, onHelplinePrefill, onGu
               <button
                 type="button"
                 onClick={() => onGuidedStart?.(starterQuery.trim(), docType)}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white"
+                className="btn-glass mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
               >
                 <WandSparkles className="h-4 w-4" />
                 Open Guided Workspace

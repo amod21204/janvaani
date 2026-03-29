@@ -9,7 +9,7 @@ export default function ChatInput({value, onChange, onSend, disabled = false}) {
   };
 
   return (
-    <div className="rounded-2xl border border-white/40 bg-white/75 p-2 shadow-sm">
+    <div className="glass-card rounded-2xl border border-white/40 bg-white/75 p-2 shadow-sm">
       <div className="flex items-center gap-2">
         <input
           value={value}
@@ -37,7 +37,7 @@ export default function ChatInput({value, onChange, onSend, disabled = false}) {
           onClick={handleSubmit}
           disabled={!value.trim() || disabled}
           aria-label="Send message"
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-glass flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <SendHorizontal className="h-4 w-4" />
         </button>
