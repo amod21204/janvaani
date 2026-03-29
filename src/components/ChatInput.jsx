@@ -21,7 +21,7 @@ export default function ChatInput({value, onChange, onSend, disabled = false}) {
             }
           }}
           placeholder="Ask about forms, complaints, documents..."
-          className="h-11 flex-1 rounded-xl border border-transparent bg-white/70 px-3 text-sm text-[#1f2630] outline-none transition placeholder:text-[#7f8894] focus:border-[#2d85ff]/30 focus:ring-2 focus:ring-[#2d85ff]/20"
+          className="h-11 flex-1 rounded-xl border border-transparent bg-white/70 px-3 text-sm text-[#111827] outline-none transition placeholder:text-[#7f8894] focus:border-[#2563EB]/40 focus:ring-2 focus:ring-[#2563EB]/20"
         />
 
         <button
@@ -37,7 +37,7 @@ export default function ChatInput({value, onChange, onSend, disabled = false}) {
           onClick={handleSubmit}
           disabled={!value.trim() || disabled}
           aria-label="Send message"
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f8bff] to-[#0063d1] text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <SendHorizontal className="h-4 w-4" />
         </button>
@@ -45,3 +45,4 @@ export default function ChatInput({value, onChange, onSend, disabled = false}) {
     </div>
   );
 }
+

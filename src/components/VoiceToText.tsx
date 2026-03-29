@@ -219,7 +219,7 @@ export default function VoiceToText({
             onTranscriptChange?.(event.target.value);
           }}
           placeholder={placeholder}
-          className="mt-4 min-h-[220px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+          className="mt-4 min-h-[220px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
         />
       )}
 
@@ -228,7 +228,7 @@ export default function VoiceToText({
           onClick={startRecording}
           disabled={!isSupported || isRecording}
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Mic className="h-4 w-4" />
           Start Recording
@@ -252,3 +252,4 @@ export default function VoiceToText({
     </div>
   );
 }
+

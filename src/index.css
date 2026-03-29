@@ -2,20 +2,20 @@
 
 @layer base {
   body {
-    @apply bg-[#f6f0e8] text-[#2e2a26];
+    @apply bg-[#F3F4F6] text-[#111827];
   }
 
   .markdown-body {
-    @apply text-sm leading-relaxed text-[#2e2a26];
+    @apply text-sm leading-relaxed text-[#111827];
   }
   .markdown-body h1 {
-    @apply mb-4 text-xl font-bold text-[#1f1813];
+    @apply mb-4 text-xl font-bold text-[#0f172a];
   }
   .markdown-body h2 {
-    @apply mb-3 mt-6 text-lg font-semibold text-[#2f241d];
+    @apply mb-3 mt-6 text-lg font-semibold text-[#1f2937];
   }
   .markdown-body h3 {
-    @apply mb-2 mt-4 text-base font-semibold text-[#3c2d23];
+    @apply mb-2 mt-4 text-base font-semibold text-[#334155];
   }
   .markdown-body p {
     @apply mb-3;
@@ -27,31 +27,31 @@
     @apply mb-3 list-decimal list-inside;
   }
   .markdown-body strong {
-    @apply font-bold text-[#1f1813];
+    @apply font-bold text-[#0f172a];
   }
   .markdown-body hr {
-    @apply my-5 border-[#e8dccf];
+    @apply my-5 border-[#dbe4f0];
   }
   .markdown-body blockquote {
-    @apply my-4 border-l-4 border-[#d79b79] bg-[#fbf3ec] px-4 py-2 text-[#6e5748];
+    @apply my-4 border-l-4 border-[#93c5fd] bg-[#eff6ff] px-4 py-2 text-[#475569];
   }
 }
 
 @layer components {
   .primary-btn {
-    @apply cursor-pointer rounded-lg border-0 bg-blue-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-blue-800;
+    @apply cursor-pointer rounded-xl border-0 bg-[#2563EB] px-5 py-3 text-base font-semibold text-white transition-all duration-200 hover:bg-[#1E40AF] hover:shadow-md;
   }
 
   .voice-card {
-    @apply rounded-xl bg-gray-50 p-5 shadow-[0_4px_10px_rgba(0,0,0,0.1)];
+    @apply rounded-2xl bg-white p-5 shadow-md;
   }
 
   .complaint-section {
-    @apply mt-7 rounded-xl bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)];
+    @apply mt-7 rounded-2xl bg-white p-5 shadow-md;
   }
 
   .complaint-box {
-    @apply mt-5 rounded-xl bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.1)];
+    @apply mt-5 rounded-2xl bg-white p-5 shadow-md;
   }
 
   .hidden {
@@ -59,6 +59,6 @@
   }
 
   #complaintText {
-    @apply mt-2 whitespace-pre-wrap leading-7 text-[#333333];
+    @apply mt-2 whitespace-pre-wrap leading-7 text-[#1f2937];
   }
 }

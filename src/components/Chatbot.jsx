@@ -185,7 +185,7 @@ export default function Chatbot({onStartComplaint}) {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#108cff] to-[#005ec6] text-white shadow-[0_16px_30px_rgba(0,95,198,0.38)] transition hover:scale-105"
+          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white shadow-[0_16px_30px_rgba(0,95,198,0.38)] transition hover:scale-105"
           aria-label={isOpen ? 'Close chat' : 'Open chat'}
         >
           {isOpen ? <X className="h-6 w-6" /> : <MessageCircleMore className="h-6 w-6" />}
@@ -202,14 +202,14 @@ export default function Chatbot({onStartComplaint}) {
             transition={{duration: 0.25}}
             className="fixed inset-0 z-[79] md:inset-auto md:bottom-24 md:right-5 md:h-[640px] md:w-[420px]"
           >
-            <div className="flex h-full flex-col border border-white/35 bg-[linear-gradient(150deg,rgba(240,247,255,0.75),rgba(255,245,236,0.72))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(32,54,86,0.24)]">
+            <div className="flex h-full flex-col border border-white/35 bg-[linear-gradient(150deg,rgba(240,247,255,0.75),rgba(239,246,255,0.86))] backdrop-blur-xl md:rounded-3xl md:shadow-[0_30px_80px_rgba(32,54,86,0.24)]">
               <header className="flex items-center justify-between border-b border-white/40 px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-[#1264a3]">
                     <Bot className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#1e2733]">JAN-VAANI Assistant</p>
+                    <p className="text-sm font-semibold text-[#111827]">JAN-VAANI Assistant</p>
                     <p className="flex items-center gap-1 text-xs text-[#4c7f42]">
                       <span className="h-2 w-2 rounded-full bg-[#44d13d]" />
                       Online
@@ -220,7 +220,7 @@ export default function Chatbot({onStartComplaint}) {
                 <button
                   type="button"
                   onClick={clearChat}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/50 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[#4f5d6c] transition hover:bg-white"
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/50 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[#334155] transition hover:bg-white"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear Chat
@@ -233,7 +233,7 @@ export default function Chatbot({onStartComplaint}) {
                 ))}
 
                 {isTyping ? (
-                  <div className="flex items-center gap-2 text-xs font-medium text-[#617083]">
+                  <div className="flex items-center gap-2 text-xs font-medium text-[#475569]">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse" />
                     AI is typing...
                   </div>
@@ -252,7 +252,7 @@ export default function Chatbot({onStartComplaint}) {
                           onStartComplaint?.();
                         }
                       }}
-                      className="rounded-full border border-white/50 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#32526f] transition hover:bg-white"
+                      className="rounded-full border border-white/50 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#1E40AF] transition hover:bg-white"
                     >
                       {action.label}
                     </button>
@@ -268,3 +268,4 @@ export default function Chatbot({onStartComplaint}) {
     </>
   );
 }
+

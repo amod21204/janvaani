@@ -54,8 +54,8 @@ export default function ChatMessage({message, onSuggestionClick}) {
           className={[
             'rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
             isUser
-              ? 'rounded-br-md bg-gradient-to-br from-[#ff6a00] to-[#d84b00] text-white'
-              : 'rounded-bl-md border border-white/40 bg-white/75 text-[#1f2630]',
+              ? 'rounded-br-md bg-gradient-to-br from-[#2563EB] to-[#1E40AF] text-white'
+              : 'rounded-bl-md border border-white/40 bg-white/75 text-[#111827]',
           ].join(' ')}
         >
           {renderTextBlocks(message.text)}
@@ -68,7 +68,7 @@ export default function ChatMessage({message, onSuggestionClick}) {
                 key={suggestion}
                 type="button"
                 onClick={() => onSuggestionClick?.(suggestion)}
-                className="rounded-full border border-white/50 bg-white/80 px-3 py-1 text-xs font-semibold text-[#2f4f6a] transition hover:bg-white"
+                className="rounded-full border border-white/50 bg-white/80 px-3 py-1 text-xs font-semibold text-[#1E40AF] transition hover:bg-white"
               >
                 {suggestion}
               </button>
@@ -78,10 +78,11 @@ export default function ChatMessage({message, onSuggestionClick}) {
       </div>
 
       {isUser ? (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#7a3d1a] shadow-sm">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#1E40AF] shadow-sm">
           <UserRound className="h-4 w-4" />
         </div>
       ) : null}
     </div>
   );
 }
+
