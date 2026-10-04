@@ -1,17 +1,15 @@
 import {Router} from 'express';
 
 import {
-  dashboardController,
-  improveComplaintController,
+  createComplaintController,
   listComplaintsController,
-  resolveComplaintController,
 } from '../controllers/complaintController.ts';
+import {requireAuth} from '../middleware/requireAuth.ts';
 
 const complaintRouter = Router();
 
-complaintRouter.post('/improve', improveComplaintController);
+complaintRouter.use(requireAuth);
+complaintRouter.post('/', createComplaintController);
 complaintRouter.get('/', listComplaintsController);
-complaintRouter.get('/dashboard', dashboardController);
-complaintRouter.post('/:id/resolve', resolveComplaintController);
 
 export {complaintRouter};

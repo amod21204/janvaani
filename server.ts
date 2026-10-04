@@ -13,7 +13,6 @@ import {createOtpChallenge, getUserFromSession, registerUser, requestPasswordRes
 import {getFormSuggestions} from './src/server/form-suggestions.ts';
 import {generateLegalDocument, validatePrompt} from './src/server/legal-generator.ts';
 import {sendOtpEmail, sendOtpSms} from './src/server/otp-mailer.ts';
-import {updateFollowUpStatuses} from './src/services/complaintService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,16 +185,7 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
-
   const runningPort = await listenOnAvailablePort(app, PORT, HOST);
-  const runFollowUpSweep = () => {
-    void updateFollowUpStatuses().catch((error) => {
-      console.error('Failed to update complaint follow-up statuses', error);
-    });
-  };
-
-  runFollowUpSweep();
-  setInterval(runFollowUpSweep, 60 * 60 * 1000);
   console.log(`Server running on http://localhost:${runningPort}`);
 }
 
